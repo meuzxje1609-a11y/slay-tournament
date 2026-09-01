@@ -1,0 +1,6 @@
+{
+  "name": "SLAY TOURNAMENT",
+  "description": "Hệ thống quản lý, tổ chức và điều hành giải đấu Esports chuyên nghiệp SLAY TOURNAMENT (Vòng Loại -> Tứ Kết -> Bán Kết -> Chung Kết, Discord Export & Livestream).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

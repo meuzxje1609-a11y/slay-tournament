@@ -1,0 +1,184 @@
+import React from 'react';
+import { Match, Participant } from '../types/tournament';
+import { Swords, Trophy, Mic, ShieldAlert, CheckCircle2 } from 'lucide-react';
+
+interface MatchCardProps {
+  match: Match;
+  participants: Participant[];
+  onOpenMatchModal: (match: Match) => void;
+  onQuickWinner?: (match: Match, winnerId: string) => void;
+}
+
+export const MatchCard: React.FC<MatchCardProps> = ({
+  match,
+  participants,
+  onOpenMatchModal,
+  onQuickWinner,
+}) => {
+  const p1 = participants.find((p) => p.id === match.participant1Id);
+  const p2 = participants.find((p) => p.id === match.participant2Id);
+
+  const isLive = match.status === 'live';
+  const isFinished = match.status === 'finished';
+  const isReady = match.status === 'ready';
+
+  const p1IsWinner = match.winnerId && match.winnerId === p1?.id;
+  const p2IsWinner = match.winnerId && match.winnerId === p2?.id;
+
+  return (
+    <div
+      id={`match-card-${match.id}`}
+      className={`relative w-full max-w-sm mx-auto rounded-xl transition-all duration-200 border text-xs sm:text-sm overflow-hidden shadow-lg ${
+        isLive
+          ? 'border-rose-500 bg-slate-900/95 ring-2 ring-rose-500/50 shadow-rose-500/20'
+          : isFinished
+          ? 'border-slate-800 bg-slate-900/80 hover:border-slate-700'
+          : isReady
+          ? 'border-indigo-500/50 bg-slate-900/90 hover:border-indigo-400 hover:shadow-indigo-500/20'
+          : 'border-slate-800/60 bg-slate-950/60 opacity-75'
+      }`}
+    >
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-950/80 border-b border-slate-800 text-[11px] font-medium text-slate-400">
+        <div className="flex items-center gap-1.5 truncate">
+          {isLive ? (
+            <span className="flex items-center gap-1 text-rose-400 font-bold animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span> LIVE
+            </span>
+          ) : isFinished ? (
+            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+              <CheckCircle2 className="w-3 h-3" /> Xong
+            </span>
+          ) : isReady ? (
+            <span className="flex items-center gap-1 text-indigo-400 font-medium">
+              <Swords className="w-3 h-3" /> Sẵn sàng
+            </span>
+          ) : (
+            <span className="text-slate-500">Chờ đối thủ</span>
+          )}
+          <span className="text-slate-600">•</span>
+          <span className="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono text-[10px]">
+            BO{match.bestOf}
+          </span>
+        </div>
+
+        {match.voiceChannel && (
+          <div className="flex items-center gap-1 text-slate-400 truncate max-w-[100px]" title={match.voiceChannel}>
+            <Mic className="w-3 h-3 text-indigo-400 shrink-0" />
+            <span className="truncate text-[10px]">{match.voiceChannel.replace('🔊 Voice ', '')}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Teams / Participants Body */}
+      <div className="p-2 space-y-1.5">
+        {/* Participant 1 */}
+        <div
+          onClick={() => onOpenMatchModal(match)}
+          className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+            p1IsWinner
+              ? 'bg-indigo-950/60 text-indigo-200 font-bold border border-indigo-500/40'
+              : match.winnerId && !p1IsWinner
+              ? 'text-slate-500 opacity-60'
+              : 'hover:bg-slate-800/80 text-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0 pr-2">
+            <span className="w-5 h-5 rounded-md bg-slate-800 text-slate-400 font-mono text-[11px] flex items-center justify-center shrink-0 border border-slate-700">
+              {p1 ? p1.seed : '?'}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-xs sm:text-sm">
+                {p1?.name || 'TBD (Chưa rõ)'}
+              </p>
+              {p1?.discordTag && (
+                <p className="text-[10px] text-slate-400 font-normal truncate">
+                  {p1.discordTag}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {p1IsWinner && <Trophy className="w-3.5 h-3.5 text-amber-400 animate-bounce" />}
+            <span
+              className={`w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs ${
+                p1IsWinner
+                  ? 'bg-indigo-600 text-white'
+                  : isFinished
+                  ? 'bg-slate-800 text-slate-400'
+                  : 'bg-slate-950 text-slate-300 border border-slate-800'
+              }`}
+            >
+              {p1 ? match.score1 : '-'}
+            </span>
+          </div>
+        </div>
+
+        {/* Participant 2 */}
+        <div
+          onClick={() => onOpenMatchModal(match)}
+          className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+            p2IsWinner
+              ? 'bg-indigo-950/60 text-indigo-200 font-bold border border-indigo-500/40'
+              : match.winnerId && !p2IsWinner
+              ? 'text-slate-500 opacity-60'
+              : 'hover:bg-slate-800/80 text-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0 pr-2">
+            <span className="w-5 h-5 rounded-md bg-slate-800 text-slate-400 font-mono text-[11px] flex items-center justify-center shrink-0 border border-slate-700">
+              {p2 ? p2.seed : '?'}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-xs sm:text-sm">
+                {p2?.name || 'TBD (Chưa rõ)'}
+              </p>
+              {p2?.discordTag && (
+                <p className="text-[10px] text-slate-400 font-normal truncate">
+                  {p2.discordTag}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {p2IsWinner && <Trophy className="w-3.5 h-3.5 text-amber-400 animate-bounce" />}
+            <span
+              className={`w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs ${
+                p2IsWinner
+                  ? 'bg-indigo-600 text-white'
+                  : isFinished
+                  ? 'bg-slate-800 text-slate-400'
+                  : 'bg-slate-950 text-slate-300 border border-slate-800'
+              }`}
+            >
+              {p2 ? match.score2 : '-'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Action Footer */}
+      <div className="px-2.5 py-1.5 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+        {match.mapPicked ? (
+          <span className="text-[10px] text-amber-400/90 truncate max-w-[130px]" title={match.mapPicked}>
+            🗺️ {match.mapPicked}
+          </span>
+        ) : match.scheduledTime ? (
+          <span className="text-[10px] text-slate-400 truncate">⏰ {match.scheduledTime}</span>
+        ) : (
+          <span className="text-[10px] text-slate-500">Nhấp để chỉnh tỉ số</span>
+        )}
+
+        <button
+          id={`btn-open-match-${match.id}`}
+          onClick={() => onOpenMatchModal(match)}
+          className="text-indigo-400 hover:text-indigo-300 hover:underline font-medium text-[11px]"
+        >
+          {isFinished ? 'Sửa điểm' : 'Nhập điểm ➔'}
+        </button>
+      </div>
+    </div>
+  );
+};
