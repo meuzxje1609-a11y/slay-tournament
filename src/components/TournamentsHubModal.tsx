@@ -351,7 +351,7 @@ export const TournamentsHubModal: React.FC<TournamentsHubModalProps> = ({
                         <span>{isSelected ? 'Đang xem bảng đấu này' : 'Xem Bảng Đấu'}</span>
                       </button>
 
-                      {isAdmin && onDeleteTournament && tournaments.length > 1 && (
+                      {onDeleteTournament && (
                         <button
                           onClick={() => {
                             if (confirm(`Bạn có chắc chắn muốn xóa giải đấu "${t.name}" không?`)) {

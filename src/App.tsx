@@ -180,17 +180,18 @@ export default function App() {
   };
 
   const handleDeleteTournament = (id: string) => {
-    if (tournaments.length <= 1) {
-      alert('Phải giữ lại ít nhất 1 giải đấu trong hệ thống!');
-      return;
-    }
     const filtered = tournaments.filter((t) => t.id !== id);
     setTournaments(filtered);
     saveTournaments(filtered);
     syncTournamentsToAPI(filtered);
     if (activeTournamentId === id) {
-      setActiveId(filtered[0].id);
-      setActiveTournamentId(filtered[0].id);
+      if (filtered.length > 0) {
+        setActiveId(filtered[0].id);
+        setActiveTournamentId(filtered[0].id);
+      } else {
+        setActiveId('');
+        setActiveTournamentId('');
+      }
     }
   };
 
