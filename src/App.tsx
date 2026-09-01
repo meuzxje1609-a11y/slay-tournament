@@ -3,6 +3,7 @@ import { Tournament, Match, Participant, TournamentDivision, getFormatDisplayLab
 import {
   loadTournaments,
   saveTournaments,
+  sanitizeTournament,
   getActiveTournamentId,
   setActiveTournamentId,
   createDefaultTournament,
@@ -157,13 +158,14 @@ export default function App() {
 
   // Helper to persist updates locally and sync to API Server / Firebase DB
   const updateTournament = (updated: Tournament) => {
-    const updatedList = tournaments.map((t) => (t.id === updated.id ? updated : t));
+    const sanitizedUpdated = sanitizeTournament(updated);
+    const updatedList = tournaments.map((t) => (t.id === sanitizedUpdated.id ? sanitizedUpdated : t));
     setTournaments(updatedList);
     saveTournaments(updatedList);
     syncTournamentsToAPI(updatedList);
 
     // If champion was just crowned, trigger celebration
-    if (updated.championId && (!activeTournament?.championId || activeTournament.championId !== updated.championId)) {
+    if (sanitizedUpdated.championId && (!activeTournament?.championId || activeTournament.championId !== sanitizedUpdated.championId)) {
       setIsChampionModalOpen(true);
     }
   };
@@ -467,7 +469,7 @@ export default function App() {
     ? (activeDivision
         ? {
             ...activeTournament,
-            name: `${activeTournament.name} • ${activeDivision.name}`,
+            name: activeTournament.name,
             format: activeDivision.format || activeTournament.format,
             rounds: activeDivision.rounds,
             participants: activeDivision.participants,
@@ -777,12 +779,6 @@ export default function App() {
                     {activeTournament.settings.prizePool && (
                       <span className="flex items-center gap-1 text-amber-300">
                         💰 {activeTournament.settings.prizePool}
-                      </span>
-                    )}
-                    {activeTournament.settings.discordServerName && (
-                      <span className="flex items-center gap-1 text-[#5865F2]">
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        {activeTournament.settings.discordServerName}
                       </span>
                     )}
                   </div>

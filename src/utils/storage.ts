@@ -22,6 +22,49 @@ export function setActiveTournamentId(id: string): void {
   localStorage.setItem(ACTIVE_TOURNAMENT_ID_KEY, id);
 }
 
+export function sanitizeTournament(t: Tournament): Tournament {
+  if (!t || !t.name) return t;
+  let name = t.name;
+
+  // 1. Remove all division names that were appended with • or -
+  if (t.divisions && t.divisions.length > 0) {
+    for (const d of t.divisions) {
+      if (d.name) {
+        const escaped = d.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(\\s*[•\\-]\\s*${escaped})+`, 'gi');
+        name = name.replace(regex, '');
+      }
+    }
+  }
+
+  // 2. Also remove any repeated standard sect names if appended
+  const knownSects = ['Toái Mộng', 'Thần Tướng', 'Tố Vấn', 'Cửu Linh', 'Huyết Hà', 'Thiết Y', 'Long Ngâm', 'Huyền Cơ', 'Triều Lam'];
+  for (const s of knownSects) {
+    const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(\\s*[•\\-]\\s*${escaped})+`, 'gi');
+    name = name.replace(regex, '');
+  }
+
+  // 3. Fallback: if name still has " • ...", clean trailing bullet repeats
+  const bulletParts = name.split('•').map(p => p.trim()).filter(Boolean);
+  if (bulletParts.length > 1) {
+    const base = bulletParts[0];
+    const allRestSameOrDivision = bulletParts.slice(1).every(p => 
+      knownSects.some(k => k.toLowerCase() === p.toLowerCase()) || 
+      (t.divisions && t.divisions.some(d => d.name.toLowerCase() === p.toLowerCase())) ||
+      p.toLowerCase() === base.toLowerCase()
+    );
+    if (allRestSameOrDivision) {
+      name = base;
+    }
+  }
+
+  return {
+    ...t,
+    name: name.trim() || t.name,
+  };
+}
+
 export function loadTournaments(): Tournament[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -32,7 +75,10 @@ export function loadTournaments(): Tournament[] {
     if (!Array.isArray(list) || list.length === 0) {
       return [];
     }
-    return list;
+    const sanitizedList = list.map(sanitizeTournament);
+    // Write back sanitized list to clean localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizedList));
+    return sanitizedList;
   } catch {
     return [];
   }
@@ -40,7 +86,8 @@ export function loadTournaments(): Tournament[] {
 
 export function saveTournaments(tournaments: Tournament[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tournaments));
+    const sanitized = tournaments.map(sanitizeTournament);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
   } catch (err) {
     console.error('Error saving tournaments to localStorage:', err);
   }
@@ -58,26 +105,23 @@ export function getAdminAuthState(): boolean {
   }
 }
 
-export function setAdminAuthState(isAuth: boolean): void {
-  try {
-    localStorage.setItem(ADMIN_AUTH_KEY, isAuth ? 'true' : 'false');
-  } catch (err) {
-    console.error('Error setting admin auth:', err);
-  }
+export function setAdminAuthState(isAdmin: boolean): void {
+  localStorage.setItem(ADMIN_AUTH_KEY, isAdmin ? 'true' : 'false');
 }
 
 export function exportTournamentsToJSON(tournaments: Tournament[]): string {
-  return JSON.stringify(tournaments, null, 2);
+  const sanitized = tournaments.map(sanitizeTournament);
+  return JSON.stringify(sanitized, null, 2);
 }
 
 export function importTournamentsFromJSON(jsonString: string): Tournament[] | null {
   try {
     const data = JSON.parse(jsonString);
     if (Array.isArray(data) && data.length > 0 && data[0].id && data[0].participants) {
-      return data as Tournament[];
+      return (data as Tournament[]).map(sanitizeTournament);
     }
     if (data.id && data.participants) {
-      return [data as Tournament];
+      return [sanitizeTournament(data as Tournament)];
     }
     return null;
   } catch {
@@ -97,8 +141,9 @@ export async function fetchTournamentsFromAPI(): Promise<Tournament[] | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
-      saveTournaments(data); // Sync local cache
-      return data as Tournament[];
+      const sanitized = (data as Tournament[]).map(sanitizeTournament);
+      saveTournaments(sanitized); // Sync local cache
+      return sanitized;
     }
     return null;
   } catch (err) {
@@ -108,13 +153,14 @@ export async function fetchTournamentsFromAPI(): Promise<Tournament[] | null> {
 }
 
 export async function syncTournamentsToAPI(tournaments: Tournament[]): Promise<boolean> {
-  saveTournaments(tournaments); // Always update local cache
+  const sanitized = tournaments.map(sanitizeTournament);
+  saveTournaments(sanitized); // Always update local cache
   try {
     const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/tournaments` : '/api/tournaments';
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tournaments),
+      body: JSON.stringify(sanitized),
     });
     return res.ok;
   } catch (err) {
