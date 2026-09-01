@@ -321,12 +321,13 @@ export default function App() {
   }
 
   // Multi-Division Handling
-  const hasDivisions = Boolean(activeTournament.divisions && activeTournament.divisions.length > 0);
-  const activeDivision = hasDivisions
+  const hasDivisions = Boolean(activeTournament && activeTournament.divisions && activeTournament.divisions.length > 0);
+  const activeDivision = hasDivisions && activeTournament
     ? activeTournament.divisions!.find((d) => d.id === activeTournament.activeDivisionId) || activeTournament.divisions![0]
     : null;
 
   const handleSelectDivision = (divisionId: string) => {
+    if (!activeTournament) return;
     const targetDiv = activeTournament.divisions?.find((d) => d.id === divisionId);
     if (!targetDiv) return;
     const updated: Tournament = {
@@ -340,6 +341,7 @@ export default function App() {
   };
 
   const handleAddDivision = (newDivData: Partial<TournamentDivision>) => {
+    if (!activeTournament) return;
     const defaultParticipants: Participant[] = [
       { id: `p-${Date.now()}-1`, name: 'Người chơi 1', seed: 1 },
       { id: `p-${Date.now()}-2`, name: 'Người chơi 2', seed: 2 },
@@ -374,7 +376,7 @@ export default function App() {
   };
 
   const handleEditDivision = (divisionId: string, updatedFields: Partial<TournamentDivision>) => {
-    if (!activeTournament.divisions) return;
+    if (!activeTournament || !activeTournament.divisions) return;
     const updatedDivisions = activeTournament.divisions.map((d) => {
       if (d.id === divisionId) {
         const updatedDiv = { ...d, ...updatedFields };
@@ -404,7 +406,7 @@ export default function App() {
   };
 
   const handleDeleteDivision = (divisionId: string) => {
-    if (!activeTournament.divisions || activeTournament.divisions.length <= 1) {
+    if (!activeTournament || !activeTournament.divisions || activeTournament.divisions.length <= 1) {
       alert('Giải đấu phải có ít nhất 1 bảng đấu!');
       return;
     }
@@ -424,28 +426,32 @@ export default function App() {
   };
 
   // Derive current view tournament for brackets & matches
-  const currentViewTournament: Tournament = activeDivision
-    ? {
-        ...activeTournament,
-        name: `${activeTournament.name} • ${activeDivision.name}`,
-        format: activeDivision.format || activeTournament.format,
-        rounds: activeDivision.rounds,
-        participants: activeDivision.participants,
-        championId: activeDivision.championId,
-        runnerUpId: activeDivision.runnerUpId,
-        thirdPlaceId: activeDivision.thirdPlaceId,
-        status: activeDivision.status || activeTournament.status,
-      }
-    : activeTournament;
+  const currentViewTournament: Tournament | null = activeTournament
+    ? (activeDivision
+        ? {
+            ...activeTournament,
+            name: `${activeTournament.name} • ${activeDivision.name}`,
+            format: activeDivision.format || activeTournament.format,
+            rounds: activeDivision.rounds,
+            participants: activeDivision.participants,
+            championId: activeDivision.championId,
+            runnerUpId: activeDivision.runnerUpId,
+            thirdPlaceId: activeDivision.thirdPlaceId,
+            status: activeDivision.status || activeTournament.status,
+          }
+        : activeTournament)
+    : null;
 
   // Quick stats
   let totalMatches = 0;
   let finishedMatches = 0;
   let liveMatches = 0;
 
-  const roundsToCount = hasDivisions
-    ? activeTournament.divisions!.flatMap((d) => d.rounds)
-    : activeTournament.rounds;
+  const roundsToCount = activeTournament
+    ? (hasDivisions
+        ? activeTournament.divisions!.flatMap((d) => d.rounds)
+        : activeTournament.rounds)
+    : [];
 
   roundsToCount.forEach((r) => {
     r.matches.forEach((m) => {
@@ -455,7 +461,7 @@ export default function App() {
     });
   });
 
-  const gamePreset = GAME_PRESETS.find((g) => g.id === activeTournament.game);
+  const gamePreset = activeTournament ? GAME_PRESETS.find((g) => g.id === activeTournament.game) : undefined;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -524,209 +530,246 @@ export default function App() {
 
       {/* Main Content Dashboard */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Tournament Hero Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 p-5 sm:p-6 shadow-xl backdrop-blur-xl">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 relative z-10">
-            {/* Left Column: Tournament Details & Action Buttons */}
-            <div className="space-y-3.5 flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  {activeTournament.customGameName || gamePreset?.name || 'Multi-Esports Tournament'}
-                </span>
-
-                {(() => {
-                  const formatInfo = getFormatDisplayLabel(activeTournament.format);
-                  return (
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 font-mono ${formatInfo.badgeColor}`}>
-                      <span>{formatInfo.emoji}</span>
-                      <span>{formatInfo.archetypeLabel}: {formatInfo.subLabel}</span>
+        {!activeTournament ? (
+          /* Empty State khi chưa có giải đấu nào */
+          <div className="text-center py-16 px-6 rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl max-w-2xl mx-auto space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+              <Trophy className="w-10 h-10" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white tracking-tight">Chưa Có Giải Đấu Nào</h2>
+              <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                Hệ thống giải đấu đang trống. Bạn có thể bắt đầu tạo giải đấu Esports mới với sơ đồ nhánh đấu và lịch thi đấu tự động.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              {isAdmin ? (
+                <button
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setIsSetupModalOpen(true);
+                  }}
+                  className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105"
+                >
+                  <Plus className="w-4 h-4" /> Tạo Giải Đấu Mới
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105"
+                >
+                  <Lock className="w-4 h-4" /> Đăng Nhập Quản Trị Viên
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Tournament Hero Banner */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 p-5 sm:p-6 shadow-xl backdrop-blur-xl">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 relative z-10">
+                {/* Left Column: Tournament Details & Action Buttons */}
+                <div className="space-y-3.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      {activeTournament.customGameName || gamePreset?.name || 'Multi-Esports Tournament'}
                     </span>
-                  );
-                })()}
 
-                {liveMatches > 0 && (
-                  <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-rose-500"></span> {liveMatches} Trận đang LIVE
-                  </span>
-                )}
-                {isAdmin ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-mono">
-                    👑 Quản trị viên
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800/80 text-slate-400 border border-slate-700/80 flex items-center gap-1">
-                    👁️ Khách xem
-                  </span>
-                )}
-              </div>
+                    {(() => {
+                      const formatInfo = getFormatDisplayLabel(activeTournament.format);
+                      return (
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 font-mono ${formatInfo.badgeColor}`}>
+                          <span>{formatInfo.emoji}</span>
+                          <span>{formatInfo.archetypeLabel}: {formatInfo.subLabel}</span>
+                        </span>
+                      );
+                    })()}
 
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {activeTournament.name}
-              </h2>
+                    {liveMatches > 0 && (
+                      <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-rose-500"></span> {liveMatches} Trận đang LIVE
+                      </span>
+                    )}
+                    {isAdmin ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-mono">
+                        👑 Quản trị viên
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800/80 text-slate-400 border border-slate-700/80 flex items-center gap-1">
+                        👁️ Khách xem
+                      </span>
+                    )}
+                  </div>
 
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-0.5">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-indigo-400" />
-                  <strong>{activeTournament.participants.length}</strong> Đội / Player
-                </span>
-                <span className="flex items-center gap-1">
-                  <Swords className="w-3.5 h-3.5 text-amber-400" />
-                  Tiến độ: <strong>{finishedMatches}/{totalMatches}</strong> trận
-                </span>
-                {activeTournament.settings.scheduleConfig?.startDate && (
-                  <span className="flex items-center gap-1 text-cyan-300">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {activeTournament.settings.scheduleConfig.startDate} {activeTournament.settings.scheduleConfig.startTime}
-                  </span>
-                )}
-                {activeTournament.settings.prizePool && (
-                  <span className="flex items-center gap-1 text-amber-300">
-                    💰 {activeTournament.settings.prizePool}
-                  </span>
-                )}
-                {activeTournament.settings.discordServerName && (
-                  <span className="flex items-center gap-1 text-[#5865F2]">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    {activeTournament.settings.discordServerName}
-                  </span>
-                )}
-              </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    {activeTournament.name}
+                  </h2>
 
-              {/* Quick Actions CTA */}
-              <div className="flex items-center gap-2 shrink-0 flex-wrap pt-1">
-                <button
-                  id="btn-hero-tournaments-hub"
-                  onClick={() => setIsTournamentsHubOpen(true)}
-                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-md"
-                >
-                  <LayoutGrid className="w-4 h-4 text-indigo-400" />
-                  <span>Danh Sách Giải ({tournaments.length})</span>
-                </button>
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-indigo-400" />
+                      <strong>{activeTournament.participants.length}</strong> Đội / Player
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Swords className="w-3.5 h-3.5 text-amber-400" />
+                      Tiến độ: <strong>{finishedMatches}/{totalMatches}</strong> trận
+                    </span>
+                    {activeTournament.settings.scheduleConfig?.startDate && (
+                      <span className="flex items-center gap-1 text-cyan-300">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {activeTournament.settings.scheduleConfig.startDate} {activeTournament.settings.scheduleConfig.startTime}
+                      </span>
+                    )}
+                    {activeTournament.settings.prizePool && (
+                      <span className="flex items-center gap-1 text-amber-300">
+                        💰 {activeTournament.settings.prizePool}
+                      </span>
+                    )}
+                    {activeTournament.settings.discordServerName && (
+                      <span className="flex items-center gap-1 text-[#5865F2]">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        {activeTournament.settings.discordServerName}
+                      </span>
+                    )}
+                  </div>
 
-                <button
-                  id="btn-hero-schedule-manager"
-                  onClick={() => setIsScheduleModalOpen(true)}
-                  className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-cyan-600/25 flex items-center gap-2 transition-all"
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span>Lịch Thi Đấu</span>
-                </button>
+                  {/* Quick Actions CTA */}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap pt-1">
+                    <button
+                      id="btn-hero-tournaments-hub"
+                      onClick={() => setIsTournamentsHubOpen(true)}
+                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-md"
+                    >
+                      <LayoutGrid className="w-4 h-4 text-indigo-400" />
+                      <span>Danh Sách Giải ({tournaments.length})</span>
+                    </button>
 
-                <button
-                  id="btn-hero-export-discord"
-                  onClick={() => setIsDiscordModalOpen(true)}
-                  className="px-3.5 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-[#5865F2]/25 flex items-center gap-2 transition-all"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Xuất Cho Discord</span>
-                </button>
+                    <button
+                      id="btn-hero-schedule-manager"
+                      onClick={() => setIsScheduleModalOpen(true)}
+                      className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-cyan-600/25 flex items-center gap-2 transition-all"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <span>Lịch Thi Đấu</span>
+                    </button>
+
+                    <button
+                      id="btn-hero-export-discord"
+                      onClick={() => setIsDiscordModalOpen(true)}
+                      className="px-3.5 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-[#5865F2]/25 flex items-center gap-2 transition-all"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Xuất Cho Discord</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Column: Ô "THẤT TUYỆT BẢNG" VINH DANH 7 NGƯỜI TOP 1 Ở 7 LƯU PHÁI NGHỊCH THỦY HÀN */}
+                <div className="w-full lg:w-auto shrink-0 flex justify-center lg:justify-end">
+                  <ThatTuyetBangWidget
+                    masters={thatTuyetMasters}
+                    onUpdateMasters={handleUpdateThatTuyetMasters}
+                    onOpenModal={() => setIsThatTuyetModalOpen(true)}
+                    onQuickExportDiscord={() => setIsThatTuyetModalOpen(true)}
+                    isAdmin={isAdmin}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Right Column: Ô "THẤT TUYỆT BẢNG" VINH DANH 7 NGƯỜI TOP 1 Ở 7 LƯU PHÁI NGHỊCH THỦY HÀN */}
-            <div className="w-full lg:w-auto shrink-0 flex justify-center lg:justify-end">
-              <ThatTuyetBangWidget
-                masters={thatTuyetMasters}
-                onUpdateMasters={handleUpdateThatTuyetMasters}
-                onOpenModal={() => setIsThatTuyetModalOpen(true)}
-                onQuickExportDiscord={() => setIsThatTuyetModalOpen(true)}
+            {/* Multi-Division Switcher Bar (Nhiều Bảng Đấu / Tỉ Võ Lưu Phái) */}
+            {hasDivisions && activeTournament.divisions && (
+              <DivisionSwitcherBar
+                divisions={activeTournament.divisions}
+                activeDivisionId={activeTournament.activeDivisionId || activeTournament.divisions[0]?.id}
+                onSelectDivision={handleSelectDivision}
+                onAddDivision={handleAddDivision}
+                onEditDivision={handleEditDivision}
+                onDeleteDivision={handleDeleteDivision}
                 isAdmin={isAdmin}
               />
+            )}
+
+            {/* View Switcher Tabs */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2">
+                <button
+                  id="tab-view-bracket"
+                  onClick={() => setActiveView('bracket')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+                    activeView === 'bracket'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  }`}
+                >
+                  {currentViewTournament?.format === 'round_robin' ? (
+                    <>
+                      <Award className="w-4 h-4 text-emerald-400" />
+                      <span>Bảng Điểm & Xếp Hạng (Points Leaderboard)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trophy className="w-4 h-4 text-indigo-400" />
+                      <span>Sơ Đồ Bảng Đấu {activeDivision ? `(${activeDivision.name})` : '(Knockout Bracket)'}</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  id="tab-view-rules"
+                  onClick={() => setActiveView('rules')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+                    activeView === 'rules'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  }`}
+                >
+                  <Shield className="w-4 h-4" /> Luật & Thể Thức Thi Đấu
+                </button>
+              </div>
+
+              {/* Backup / Restore buttons */}
+              <div className="hidden sm:flex items-center gap-2 text-xs">
+                <button
+                  onClick={handleExportJSON}
+                  className="px-2.5 py-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800 rounded-lg flex items-center gap-1 transition-colors"
+                  title="Lưu file JSON lưu trữ"
+                >
+                  <DownloadCloud className="w-3.5 h-3.5" /> Xuất JSON
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={handleImportJSON}
+                    className="px-2.5 py-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800 rounded-lg flex items-center gap-1 transition-colors"
+                    title="Khôi phục dữ liệu từ JSON"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" /> Nhập JSON
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Multi-Division Switcher Bar (Nhiều Bảng Đấu / Tỉ Võ Lưu Phái) */}
-        {hasDivisions && activeTournament.divisions && (
-          <DivisionSwitcherBar
-            divisions={activeTournament.divisions}
-            activeDivisionId={activeTournament.activeDivisionId || activeTournament.divisions[0]?.id}
-            onSelectDivision={handleSelectDivision}
-            onAddDivision={handleAddDivision}
-            onEditDivision={handleEditDivision}
-            onDeleteDivision={handleDeleteDivision}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {/* View Switcher Tabs */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-          <div className="flex items-center gap-2">
-            <button
-              id="tab-view-bracket"
-              onClick={() => setActiveView('bracket')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
-                activeView === 'bracket'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              {currentViewTournament.format === 'round_robin' ? (
-                <>
-                  <Award className="w-4 h-4 text-emerald-400" />
-                  <span>Bảng Điểm & Xếp Hạng (Points Leaderboard)</span>
-                </>
-              ) : (
-                <>
-                  <Trophy className="w-4 h-4 text-indigo-400" />
-                  <span>Sơ Đồ Bảng Đấu {activeDivision ? `(${activeDivision.name})` : '(Knockout Bracket)'}</span>
-                </>
-              )}
-            </button>
-            <button
-              id="tab-view-rules"
-              onClick={() => setActiveView('rules')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
-                activeView === 'rules'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Shield className="w-4 h-4" /> Luật & Thể Thức Thi Đấu
-            </button>
-          </div>
-
-          {/* Backup / Restore buttons */}
-          <div className="hidden sm:flex items-center gap-2 text-xs">
-            <button
-              onClick={handleExportJSON}
-              className="px-2.5 py-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800 rounded-lg flex items-center gap-1 transition-colors"
-              title="Lưu file JSON lưu trữ"
-            >
-              <DownloadCloud className="w-3.5 h-3.5" /> Xuất JSON
-            </button>
-            {isAdmin && (
-              <button
-                onClick={handleImportJSON}
-                className="px-2.5 py-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800 rounded-lg flex items-center gap-1 transition-colors"
-                title="Khôi phục dữ liệu từ JSON"
-              >
-                <UploadCloud className="w-3.5 h-3.5" /> Nhập JSON
-              </button>
+            {/* Dynamic Views */}
+            {activeView === 'bracket' && currentViewTournament && (
+              <div className="space-y-6">
+                {currentViewTournament.format === 'double_elimination' ? (
+                  <DoubleEliminationView
+                    tournament={currentViewTournament}
+                    onSelectMatch={(m) => setSelectedMatch(m)}
+                  />
+                ) : currentViewTournament.format === 'round_robin' ? (
+                  <RoundRobinView
+                    tournament={currentViewTournament}
+                    onSelectMatch={(m) => setSelectedMatch(m)}
+                  />
+                ) : (
+                  <BracketTree
+                    tournament={currentViewTournament}
+                    onSelectMatch={(m) => setSelectedMatch(m)}
+                  />
+                )}
+              </div>
             )}
-          </div>
-        </div>
-
-        {/* Dynamic Views */}
-        {activeView === 'bracket' && (
-          <div className="space-y-6">
-            {currentViewTournament.format === 'double_elimination' ? (
-              <DoubleEliminationView
-                tournament={currentViewTournament}
-                onSelectMatch={(m) => setSelectedMatch(m)}
-              />
-            ) : currentViewTournament.format === 'round_robin' ? (
-              <RoundRobinView
-                tournament={currentViewTournament}
-                onSelectMatch={(m) => setSelectedMatch(m)}
-              />
-            ) : (
-              <BracketTree
-                tournament={currentViewTournament}
-                onSelectMatch={(m) => setSelectedMatch(m)}
-              />
-            )}
-          </div>
+          </>
         )}
 
         {activeView === 'rules' && (

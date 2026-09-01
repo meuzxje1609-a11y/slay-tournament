@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  tournament: Tournament;
+  tournament?: Tournament | null;
   tournamentsList: Tournament[];
   isAdmin: boolean;
   onOpenLogin: () => void;
@@ -94,9 +94,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         pixelRatio: 2,
       });
 
+      const tName = tournament?.name || 'SLAY_TOURNAMENT';
       const fileName = customName
-        ? `${tournament.name.replace(/\s+/g, '_')}_${customName.replace(/\s+/g, '_')}.png`
-        : `${tournament.name.replace(/\s+/g, '_')}_Bracket.png`;
+        ? `${tName.replace(/\s+/g, '_')}_${customName.replace(/\s+/g, '_')}.png`
+        : `${tName.replace(/\s+/g, '_')}_Bracket.png`;
 
       const link = document.createElement('a');
       link.download = fileName;
