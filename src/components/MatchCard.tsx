@@ -1,20 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Match, Participant } from '../types/tournament';
-import { Swords, Trophy, Mic, ShieldAlert, CheckCircle2, Sparkles } from 'lucide-react';
+import { Swords, Trophy, Mic, ShieldAlert, CheckCircle2, Sparkles, GripVertical } from 'lucide-react';
 
 interface MatchCardProps {
   match: Match;
   participants: Participant[];
+  isAdmin?: boolean;
   onOpenMatchModal: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
+  onSwapMatchSlots?: (sourceMatchId: string, sourceSlot: 1 | 2, targetMatchId: string, targetSlot: 1 | 2) => void;
 }
 
 export const MatchCard: React.FC<MatchCardProps> = ({
   match,
   participants,
+  isAdmin = false,
   onOpenMatchModal,
   onQuickWinner,
+  onSwapMatchSlots,
 }) => {
+  const [dragOverSlot, setDragOverSlot] = useState<1 | 2 | null>(null);
+
   const p1 = participants.find((p) => p.id === match.participant1Id);
   const p2 = participants.find((p) => p.id === match.participant2Id);
 
@@ -25,6 +31,42 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 
   const p1IsWinner = match.winnerId && match.winnerId === p1?.id;
   const p2IsWinner = match.winnerId && match.winnerId === p2?.id;
+
+  const canDrag = isAdmin && Boolean(onSwapMatchSlots);
+
+  const handleDragStart = (e: React.DragEvent, slot: 1 | 2) => {
+    if (!canDrag) return;
+    e.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({ matchId: match.id, slot, participantId: slot === 1 ? p1?.id : p2?.id })
+    );
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, slot: 1 | 2) => {
+    if (!canDrag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverSlot !== slot) {
+      setDragOverSlot(slot);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, slot: 1 | 2) => {
+    if (!canDrag || !onSwapMatchSlots) return;
+    e.preventDefault();
+    setDragOverSlot(null);
+    try {
+      const raw = e.dataTransfer.getData('application/json');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data && data.matchId) {
+        onSwapMatchSlots(data.matchId, data.slot, match.id, slot);
+      }
+    } catch (err) {
+      console.error('Drop swap error:', err);
+    }
+  };
 
   return (
     <div
@@ -81,18 +123,29 @@ export const MatchCard: React.FC<MatchCardProps> = ({
       <div className="p-2 space-y-1.5">
         {/* Participant 1 */}
         <div
+          draggable={canDrag}
+          onDragStart={(e) => handleDragStart(e, 1)}
+          onDragOver={(e) => handleDragOver(e, 1)}
+          onDragLeave={() => setDragOverSlot(null)}
+          onDrop={(e) => handleDrop(e, 1)}
           onClick={() => onOpenMatchModal(match)}
-          className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
-            isBye && p1
+          className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
+            dragOverSlot === 1
+              ? 'ring-2 ring-indigo-400 bg-indigo-900/60 scale-[1.02]'
+              : isBye && p1
               ? 'bg-purple-950/40 text-purple-200 font-semibold border border-purple-500/30'
               : p1IsWinner
               ? 'bg-indigo-950/60 text-indigo-200 font-bold border border-indigo-500/40'
               : match.winnerId && !p1IsWinner
               ? 'text-slate-500 opacity-60'
               : 'hover:bg-slate-800/80 text-slate-200'
-          }`}
+          } ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          title={canDrag ? 'Kéo thả để hoán đổi vị trí hoặc đối thủ' : undefined}
         >
           <div className="flex items-center gap-2 min-w-0 pr-2">
+            {canDrag && (
+              <GripVertical className="w-3.5 h-3.5 text-slate-500 hover:text-indigo-400 shrink-0" />
+            )}
             <span className="w-5 h-5 rounded-md bg-slate-800 text-slate-400 font-mono text-[11px] flex items-center justify-center shrink-0 border border-slate-700">
               {p1 ? p1.seed : '?'}
             </span>
@@ -134,18 +187,29 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 
         {/* Participant 2 */}
         <div
+          draggable={canDrag}
+          onDragStart={(e) => handleDragStart(e, 2)}
+          onDragOver={(e) => handleDragOver(e, 2)}
+          onDragLeave={() => setDragOverSlot(null)}
+          onDrop={(e) => handleDrop(e, 2)}
           onClick={() => onOpenMatchModal(match)}
-          className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
-            isBye && p2
+          className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
+            dragOverSlot === 2
+              ? 'ring-2 ring-indigo-400 bg-indigo-900/60 scale-[1.02]'
+              : isBye && p2
               ? 'bg-purple-950/40 text-purple-200 font-semibold border border-purple-500/30'
               : p2IsWinner
               ? 'bg-indigo-950/60 text-indigo-200 font-bold border border-indigo-500/40'
               : match.winnerId && !p2IsWinner
               ? 'text-slate-500 opacity-60'
               : 'hover:bg-slate-800/80 text-slate-200'
-          }`}
+          } ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          title={canDrag ? 'Kéo thả để hoán đổi vị trí hoặc đối thủ' : undefined}
         >
           <div className="flex items-center gap-2 min-w-0 pr-2">
+            {canDrag && (
+              <GripVertical className="w-3.5 h-3.5 text-slate-500 hover:text-indigo-400 shrink-0" />
+            )}
             <span className="w-5 h-5 rounded-md bg-slate-800 text-slate-400 font-mono text-[11px] flex items-center justify-center shrink-0 border border-slate-700">
               {p2 ? p2.seed : '?'}
             </span>

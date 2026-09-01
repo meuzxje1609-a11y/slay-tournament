@@ -919,6 +919,8 @@ export default function App() {
                 {currentViewTournament.format === 'double_elimination' ? (
                   <DoubleEliminationView
                     tournament={currentViewTournament}
+                    isAdmin={isAdmin}
+                    onUpdateTournament={updateTournament}
                     onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
                   />
@@ -931,6 +933,8 @@ export default function App() {
                 ) : (
                   <BracketTree
                     tournament={currentViewTournament}
+                    isAdmin={isAdmin}
+                    onUpdateTournament={updateTournament}
                     onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
                   />

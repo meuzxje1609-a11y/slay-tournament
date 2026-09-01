@@ -10,6 +10,16 @@ export function getNextPowerOfTwo(n: number): number {
   return p;
 }
 
+// Helper to get standard bracket size according to tournament format rules:
+// - <= 8 players/teams: 8 slots (Tứ Kết -> Bán Kết -> Chung Kết)
+// - 9 to 16 players/teams: 16 slots (Vòng Loại / Vòng 1/8 -> Tứ Kết -> Bán Kết -> Chung Kết)
+// - > 16 players/teams: 32 slots (Vòng Sơ Loại / Play-In -> Vòng 1/8 -> Tứ Kết -> Bán Kết -> Chung Kết, or next power of 2 if > 32)
+export function getStandardBracketSize(count: number): number {
+  if (count <= 8) return 8;
+  if (count <= 16) return 16;
+  return Math.max(32, getNextPowerOfTwo(count));
+}
+
 // Generate seeded positions: e.g. for 8 seeds: [1, 8, 4, 5, 2, 7, 3, 6]
 export function generateSeededOrder(size: number): number[] {
   let order = [1, 2];
@@ -42,9 +52,9 @@ export function getRoundName(
   if (fromEnd === 0) return 'Chung Kết (Finals)';
   if (fromEnd === 1) return 'Bán Kết (Semi-Finals)';
   if (fromEnd === 2) return 'Tứ Kết (Quarter-Finals)';
-  if (fromEnd === 3) return 'Vòng 1/8 (Round of 16)';
+  if (fromEnd === 3) return 'Vòng Loại (Vòng 1/8 / Round of 16)';
   if (fromEnd === 4) return 'Vòng Sơ Loại (Play-In / Round of 32)';
-  return `Vòng Loại ${roundIndex + 1}`;
+  return `Vòng Sơ Loại ${roundIndex + 1}`;
 }
 
 // Helper to determine Best Of for a specific round based on stage settings
@@ -73,8 +83,11 @@ export function generateSingleElimination(
   const count = participants.length;
   if (count < 2) return [];
 
-  // Dynamic bracket size based on participants (e.g. 4 -> 4, 8 -> 8, 16 -> 16, 32 -> 32)
-  const bracketSize = Math.max(2, getNextPowerOfTwo(count));
+  // Bracket sizing logic:
+  // <= 8: bracketSize = 8 (Tứ Kết -> Chung Kết)
+  // <= 16: bracketSize = 16 (Vòng Loại -> Tứ Kết -> Chung Kết)
+  // > 16: bracketSize = 32+ (Vòng Sơ Loại -> Vòng Loại -> Tứ Kết -> Chung Kết)
+  const bracketSize = getStandardBracketSize(count);
   const numRounds = Math.log2(bracketSize);
   const seedOrder = generateSeededOrder(bracketSize);
 
@@ -203,7 +216,7 @@ export function generateDoubleElimination(
   const count = participants.length;
   if (count < 4) return generateSingleElimination(participants, settings);
 
-  const bracketSize = getNextPowerOfTwo(count);
+  const bracketSize = getStandardBracketSize(count);
   const numRoundsUpper = Math.log2(bracketSize);
   const seedOrder = generateSeededOrder(bracketSize);
 
@@ -804,6 +817,127 @@ function advanceMatchSingleInternal(
     championId,
     runnerUpId,
     status: championId ? 'completed' : 'ongoing',
+  };
+}
+
+// Swap participants / slots between any two matches on the bracket and recompute BYEs
+export function swapBracketMatchSlots(
+  tournament: Tournament,
+  sourceMatchId: string,
+  sourceSlot: 1 | 2,
+  targetMatchId: string,
+  targetSlot: 1 | 2
+): Tournament {
+  const rounds = JSON.parse(JSON.stringify(tournament.rounds)) as Round[];
+
+  let sourceMatch: Match | undefined;
+  let targetMatch: Match | undefined;
+
+  for (const r of rounds) {
+    for (const m of r.matches) {
+      if (m.id === sourceMatchId) sourceMatch = m;
+      if (m.id === targetMatchId) targetMatch = m;
+    }
+  }
+
+  if (!sourceMatch || !targetMatch) return tournament;
+
+  // Swap the participant IDs
+  const sourcePId = sourceSlot === 1 ? sourceMatch.participant1Id : sourceMatch.participant2Id;
+  const targetPId = targetSlot === 1 ? targetMatch.participant1Id : targetMatch.participant2Id;
+
+  if (sourceSlot === 1) sourceMatch.participant1Id = targetPId;
+  else sourceMatch.participant2Id = targetPId;
+
+  if (targetSlot === 1) targetMatch.participant1Id = sourcePId;
+  else targetMatch.participant2Id = sourcePId;
+
+  // Recompute Round 0 BYE statuses and forward propagation to Round 1
+  const r0Matches = rounds[0].matches;
+  for (let m = 0; m < r0Matches.length; m++) {
+    const match = r0Matches[m];
+    const p1 = match.participant1Id;
+    const p2 = match.participant2Id;
+
+    if (p1 && !p2) {
+      match.status = 'finished';
+      match.winnerId = p1;
+      match.score1 = 0;
+      match.score2 = 0;
+      match.notes = 'Đặc cách vào vòng sau (BYE)';
+      if (match.nextMatchId && rounds[1]) {
+        const nextMatch = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
+        if (nextMatch) {
+          if (match.nextMatchSlot === 1) nextMatch.participant1Id = p1;
+          else nextMatch.participant2Id = p1;
+        }
+      }
+    } else if (!p1 && p2) {
+      match.status = 'finished';
+      match.winnerId = p2;
+      match.score1 = 0;
+      match.score2 = 0;
+      match.notes = 'Đặc cách vào vòng sau (BYE)';
+      if (match.nextMatchId && rounds[1]) {
+        const nextMatch = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
+        if (nextMatch) {
+          if (match.nextMatchSlot === 1) nextMatch.participant1Id = p2;
+          else nextMatch.participant2Id = p2;
+        }
+      }
+    } else if (p1 && p2) {
+      // Both participants present
+      if (match.notes?.includes('BYE')) {
+        match.status = 'ready';
+        match.winnerId = undefined;
+        match.notes = undefined;
+        // Clean next match if it had auto-advanced
+        if (match.nextMatchId && rounds[1]) {
+          const nextMatch = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
+          if (nextMatch) {
+            if (match.nextMatchSlot === 1) nextMatch.participant1Id = undefined;
+            else nextMatch.participant2Id = undefined;
+          }
+        }
+      } else if (match.status === 'finished') {
+        // Keep finished match if already played
+      } else {
+        match.status = 'ready';
+      }
+    } else {
+      match.status = 'pending';
+      match.winnerId = undefined;
+      match.notes = undefined;
+    }
+  }
+
+  // Update Round 1 readiness
+  if (rounds.length > 1) {
+    rounds[1].matches.forEach((m) => {
+      if (m.participant1Id && m.participant2Id) {
+        if (m.status === 'pending') m.status = 'ready';
+      }
+    });
+  }
+
+  let divisions = tournament.divisions;
+  if (divisions && tournament.activeDivisionId) {
+    divisions = divisions.map((d) => {
+      if (d.id === tournament.activeDivisionId) {
+        return {
+          ...d,
+          rounds,
+        };
+      }
+      return d;
+    });
+  }
+
+  return {
+    ...tournament,
+    rounds,
+    divisions,
+    updatedAt: Date.now(),
   };
 }
 

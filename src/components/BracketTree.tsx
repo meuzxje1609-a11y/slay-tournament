@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Tournament, Match, Participant, Round } from '../types/tournament';
 import { MatchCard } from './MatchCard';
+import { swapBracketMatchSlots } from '../utils/bracketGenerator';
 import { toPng } from 'html-to-image';
 import {
   ZoomIn,
@@ -16,20 +17,25 @@ import {
   Flame,
   Crown,
   Download,
+  Sparkles,
 } from 'lucide-react';
 
 interface BracketTreeProps {
   tournament: Tournament;
+  isAdmin?: boolean;
   onOpenMatchModal?: (match: Match) => void;
   onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
+  onUpdateTournament?: (updated: Tournament) => void;
 }
 
 export const BracketTree: React.FC<BracketTreeProps> = ({
   tournament,
+  isAdmin = false,
   onOpenMatchModal,
   onSelectMatch,
   onQuickWinner,
+  onUpdateTournament,
 }) => {
   const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,6 +44,17 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
   const [selectedRoundId, setSelectedRoundId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [exportingRoundId, setExportingRoundId] = useState<string | null>(null);
+
+  const handleSwapMatchSlots = (
+    sourceMatchId: string,
+    sourceSlot: 1 | 2,
+    targetMatchId: string,
+    targetSlot: 1 | 2
+  ) => {
+    if (!onUpdateTournament) return;
+    const updated = swapBracketMatchSlots(tournament, sourceMatchId, sourceSlot, targetMatchId, targetSlot);
+    onUpdateTournament(updated);
+  };
 
   const mainRounds = tournament.rounds.filter(
     (r) => r.bracketSection === 'winners' || r.bracketSection === 'grand_final'
@@ -269,6 +286,20 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
 
       {/* Main Content Area */}
       <div id="tournament-bracket-canvas" className="w-full">
+        {isAdmin && onUpdateTournament && (
+          <div className="mb-4 flex items-center justify-between gap-2 p-2.5 bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/30 rounded-2xl text-xs text-indigo-200 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>
+                <strong>Kéo thả đổi cặp đấu:</strong> Bạn có thể dùng chuột giữ và kéo bất kỳ tuyển thủ (hoặc ô <em>Miễn đấu</em>) giữa các Bàn để hoán đổi vị trí trực tiếp!
+              </span>
+            </div>
+            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-mono border border-indigo-500/30 font-bold">
+              👑 Admin Drag & Drop
+            </span>
+          </div>
+        )}
+
         {displayMode === 'grid' ? (
           /* ========================================================================= */
           /* GRID VIEW MODE (DANH SÁCH DẠNG LƯỚI THEO TỪNG VÒNG ĐẤU)                   */
@@ -334,8 +365,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                           key={match.id}
                           match={match}
                           participants={tournament.participants}
+                          isAdmin={isAdmin}
                           onOpenMatchModal={handleOpenMatchModal}
                           onQuickWinner={onQuickWinner}
+                          onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                         />
                       ))}
                     </div>
@@ -381,8 +414,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                             <MatchCard
                               match={thirdPlaceRound.matches[0]}
                               participants={tournament.participants}
+                              isAdmin={isAdmin}
                               onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
+                              onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                             />
                           </div>
                         </div>
@@ -444,8 +479,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                             key={match.id}
                             match={match}
                             participants={tournament.participants}
+                            isAdmin={isAdmin}
                             onOpenMatchModal={handleOpenMatchModal}
                             onQuickWinner={onQuickWinner}
+                            onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                           />
                         ))}
                       </div>
@@ -486,8 +523,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                           <MatchCard
                             match={thirdPlaceRound.matches[0]}
                             participants={tournament.participants}
-                            onOpenMatchModal={onOpenMatchModal}
+                            isAdmin={isAdmin}
+                            onOpenMatchModal={handleOpenMatchModal}
                             onQuickWinner={onQuickWinner}
+                            onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                           />
                         </div>
                       </div>
@@ -536,8 +575,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                       <MatchCard
                         match={thirdPlaceRound.matches[0]}
                         participants={tournament.participants}
-                        onOpenMatchModal={onOpenMatchModal}
+                        isAdmin={isAdmin}
+                        onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
+                        onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                       />
                     </div>
                   </div>
@@ -579,8 +620,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                           <MatchCard
                             match={match}
                             participants={tournament.participants}
-                            onOpenMatchModal={onOpenMatchModal}
+                            isAdmin={isAdmin}
+                            onOpenMatchModal={handleOpenMatchModal}
                             onQuickWinner={onQuickWinner}
+                            onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                           />
                         </div>
                       ))}
@@ -642,8 +685,10 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                       <MatchCard
                         match={thirdPlaceRound.matches[0]}
                         participants={tournament.participants}
-                        onOpenMatchModal={onOpenMatchModal}
+                        isAdmin={isAdmin}
+                        onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
+                        onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                       />
                     </div>
                   )}

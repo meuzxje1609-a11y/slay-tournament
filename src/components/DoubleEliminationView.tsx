@@ -1,24 +1,40 @@
 import React, { useState } from 'react';
 import { Tournament, Match, Participant } from '../types/tournament';
 import { MatchCard } from './MatchCard';
-import { Trophy, ArrowUpRight, ArrowDownRight, Crown, LayoutGrid, GitBranch, Award } from 'lucide-react';
+import { swapBracketMatchSlots } from '../utils/bracketGenerator';
+import { Trophy, ArrowUpRight, ArrowDownRight, Crown, LayoutGrid, GitBranch, Award, Sparkles } from 'lucide-react';
 
 interface DoubleEliminationViewProps {
   tournament: Tournament;
+  isAdmin?: boolean;
   onOpenMatchModal?: (match: Match) => void;
   onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
+  onUpdateTournament?: (updated: Tournament) => void;
 }
 
 export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
   tournament,
+  isAdmin = false,
   onOpenMatchModal,
   onSelectMatch,
   onQuickWinner,
+  onUpdateTournament,
 }) => {
   const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const [activeTab, setActiveTab] = useState<'all' | 'upper' | 'lower' | 'grand_final' | string>('all');
   const [displayMode, setDisplayMode] = useState<'grid' | 'tree'>('grid');
+
+  const handleSwapMatchSlots = (
+    sourceMatchId: string,
+    sourceSlot: 1 | 2,
+    targetMatchId: string,
+    targetSlot: 1 | 2
+  ) => {
+    if (!onUpdateTournament) return;
+    const updated = swapBracketMatchSlots(tournament, sourceMatchId, sourceSlot, targetMatchId, targetSlot);
+    onUpdateTournament(updated);
+  };
 
   const upperRounds = tournament.rounds.filter((r) => r.bracketSection === 'winners');
   const lowerRounds = tournament.rounds.filter((r) => r.bracketSection === 'losers');
@@ -148,6 +164,20 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
 
       {/* Main Bracket Area */}
       <div id="tournament-bracket-canvas" className="w-full pt-2">
+        {isAdmin && onUpdateTournament && (
+          <div className="mb-4 flex items-center justify-between gap-2 p-2.5 bg-gradient-to-r from-purple-950/60 via-indigo-950/40 to-slate-900 border border-purple-500/30 rounded-2xl text-xs text-purple-200 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>
+                <strong>Kéo thả đổi cặp đấu:</strong> Bạn có thể dùng chuột giữ và kéo thẻ tuyển thủ giữa các Bàn để hoán đổi vị trí trực tiếp!
+              </span>
+            </div>
+            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono border border-purple-500/30 font-bold">
+              👑 Admin Drag & Drop
+            </span>
+          </div>
+        )}
+
         {displayMode === 'grid' ? (
           /* GRID VIEW */
           <div className="space-y-8">
@@ -171,8 +201,10 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                         key={match.id}
                         match={match}
                         participants={tournament.participants}
+                        isAdmin={isAdmin}
                         onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
+                        onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                       />
                     ))}
                   </div>
@@ -193,8 +225,10 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                           key={m.id}
                           match={m}
                           participants={tournament.participants}
+                          isAdmin={isAdmin}
                           onOpenMatchModal={handleOpenMatchModal}
                           onQuickWinner={onQuickWinner}
+                          onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                         />
                       ))}
                     </div>
@@ -249,8 +283,10 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                               key={match.id}
                               match={match}
                               participants={tournament.participants}
+                              isAdmin={isAdmin}
                               onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
+                              onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                             />
                           ))}
                         </div>
@@ -284,8 +320,10 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                               key={match.id}
                               match={match}
                               participants={tournament.participants}
+                              isAdmin={isAdmin}
                               onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
+                              onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                             />
                           ))}
                         </div>
@@ -316,8 +354,10 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                         key={m.id}
                         match={m}
                         participants={tournament.participants}
+                        isAdmin={isAdmin}
                         onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
+                        onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
                       />
                     ))}
                   </div>
