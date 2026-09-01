@@ -127,11 +127,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="shrink-0 max-w-xs sm:max-w-md">
               <div className="flex items-center gap-2">
                 <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight whitespace-nowrap">
-                  {tournament.name}
+                  SLAY TOURNAMENT
                 </h1>
               </div>
               <p className="text-[11px] text-slate-400 whitespace-nowrap hidden md:block">
-                {tournament.description || 'Tournament Discord Server Slay'}
+                Tournament Slay Server
               </p>
             </div>
           </div>
