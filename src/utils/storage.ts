@@ -35,8 +35,8 @@ export function createInitialTournaments(): Tournament[] {
 
   const major16Tournament: Tournament = {
     id: 'tournament-major-16',
-    name: 'SLAY TOURNAMENT - Siêu Cúp 16 Đội',
-    description: 'Quy mô 16 đội tuyển: Vòng loại, Tứ kết, Bán kết và Chung kết đỉnh cao',
+    name: 'SLAY TOURNAMENT',
+    description: 'Tournament Slay Server',
     game: 'custom',
     customGameName: 'S L A Y',
     format: 'single_elimination',
@@ -260,7 +260,7 @@ export function loadTournaments(): Tournament[] {
         gameCat = 'custom';
         customGameName = 'S L A Y';
       } else if (t.id === 'tournament-major-16' || t.name.includes('Giải Vô Địch Siêu Cúp') || t.name.includes('Siêu Cúp 16 Đội')) {
-        tournamentName = 'SLAY TOURNAMENT - Siêu Cúp 16 Đội';
+        tournamentName = 'SLAY TOURNAMENT';
         tournamentDesc = 'Tournament Discord Server Slay';
         gameCat = 'custom';
         customGameName = 'S L A Y';
