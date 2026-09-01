@@ -63,6 +63,7 @@ import {
 export default function App() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [activeTournamentId, setActiveId] = useState<string>('');
+  const [selectedDivisionId, setSelectedDivisionId] = useState<string>('');
   const [activeView, setActiveView] = useState<'bracket' | 'matches' | 'rules'>('bracket');
 
   // Authentication State
@@ -158,7 +159,31 @@ export default function App() {
 
   // Helper to persist updates locally and sync to API Server / Firebase DB
   const updateTournament = (updated: Tournament) => {
-    const sanitizedUpdated = sanitizeTournament(updated);
+    let finalUpdated = updated;
+    const currentActive = tournaments.find((t) => t.id === updated.id);
+    if (currentActive && currentActive.divisions && currentActive.divisions.length > 0 && selectedDivisionId) {
+      const updatedDivisions = currentActive.divisions.map((d) => {
+        if (d.id === selectedDivisionId) {
+          return {
+            ...d,
+            rounds: updated.rounds || d.rounds,
+            participants: updated.participants || d.participants,
+            championId: updated.championId,
+            runnerUpId: updated.runnerUpId,
+            thirdPlaceId: updated.thirdPlaceId,
+            status: updated.status,
+          };
+        }
+        return d;
+      });
+      finalUpdated = {
+        ...currentActive,
+        ...updated,
+        divisions: updated.divisions || updatedDivisions,
+      };
+    }
+
+    const sanitizedUpdated = sanitizeTournament(finalUpdated);
     const updatedList = tournaments.map((t) => (t.id === sanitizedUpdated.id ? sanitizedUpdated : t));
     setTournaments(updatedList);
     saveTournaments(updatedList);
@@ -359,24 +384,17 @@ export default function App() {
 
 
 
-  // Multi-Division Handling
+  // Multi-Division Handling (Local Client View State)
   const hasDivisions = Boolean(activeTournament && activeTournament.divisions && activeTournament.divisions.length > 0);
   const activeDivision = hasDivisions && activeTournament
-    ? activeTournament.divisions!.find((d) => d.id === activeTournament.activeDivisionId) || activeTournament.divisions![0]
+    ? (selectedDivisionId && activeTournament.divisions!.find((d) => d.id === selectedDivisionId))
+      || (activeTournament.activeDivisionId && activeTournament.divisions!.find((d) => d.id === activeTournament.activeDivisionId))
+      || activeTournament.divisions![0]
     : null;
 
+  // Purely client-side tab switching: does NOT write to database / API to avoid jumping tabs for other viewers
   const handleSelectDivision = (divisionId: string) => {
-    if (!activeTournament) return;
-    const targetDiv = activeTournament.divisions?.find((d) => d.id === divisionId);
-    if (!targetDiv) return;
-    const updated: Tournament = {
-      ...activeTournament,
-      activeDivisionId: divisionId,
-      rounds: targetDiv.rounds,
-      format: targetDiv.format || activeTournament.format,
-      participants: targetDiv.participants,
-    };
-    updateTournament(updated);
+    setSelectedDivisionId(divisionId);
   };
 
   const handleAddDivision = (newDivData: Partial<TournamentDivision>) => {
@@ -408,10 +426,9 @@ export default function App() {
     const updated: Tournament = {
       ...activeTournament,
       divisions: updatedDivisions,
-      activeDivisionId: newDivision.id,
-      rounds: newDivision.rounds,
     };
     updateTournament(updated);
+    setSelectedDivisionId(newDivision.id);
   };
 
   const handleEditDivision = (divisionId: string, updatedFields: Partial<TournamentDivision>) => {
@@ -432,14 +449,9 @@ export default function App() {
       return d;
     });
 
-    const activeDivObj = updatedDivisions.find(
-      (d) => d.id === (activeTournament.activeDivisionId || divisionId)
-    );
-
     const updated: Tournament = {
       ...activeTournament,
       divisions: updatedDivisions,
-      rounds: activeDivObj ? activeDivObj.rounds : activeTournament.rounds,
     };
     updateTournament(updated);
   };
@@ -450,18 +462,16 @@ export default function App() {
       return;
     }
     const filtered = activeTournament.divisions.filter((d) => d.id !== divisionId);
-    const nextActiveId = filtered[0].id;
     const nextActiveDiv = filtered[0];
 
     const updated: Tournament = {
       ...activeTournament,
       divisions: filtered,
-      activeDivisionId: nextActiveId,
-      rounds: nextActiveDiv.rounds,
-      format: nextActiveDiv.format || activeTournament.format,
-      participants: nextActiveDiv.participants,
     };
     updateTournament(updated);
+    if (selectedDivisionId === divisionId) {
+      setSelectedDivisionId(nextActiveDiv.id);
+    }
   };
 
   // Derive current view tournament for brackets & matches
@@ -841,7 +851,7 @@ export default function App() {
               <DivisionSwitcherBar
                 tournament={activeTournament}
                 divisions={activeTournament.divisions}
-                activeDivisionId={activeTournament.activeDivisionId || activeTournament.divisions[0]?.id}
+                activeDivisionId={activeDivision?.id || activeTournament.divisions[0]?.id}
                 onSelectDivision={handleSelectDivision}
                 onOpenRosterManager={() => setIsRosterManagerOpen(true)}
                 onAddDivision={handleAddDivision}
