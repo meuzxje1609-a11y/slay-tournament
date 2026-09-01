@@ -9,6 +9,7 @@ interface DivisionSwitcherBarProps {
   activeDivisionId?: string;
   onSelectDivision: (divisionId: string) => void;
   onOpenSetupModal?: () => void;
+  onOpenRosterManager?: () => void;
   onAddDivision?: (newDiv: Partial<TournamentDivision>) => void;
   onEditDivision?: (divisionId: string, updatedFields: Partial<TournamentDivision>) => void;
   onDeleteDivision?: (divisionId: string) => void;
@@ -21,12 +22,14 @@ export const DivisionSwitcherBar: React.FC<DivisionSwitcherBarProps> = ({
   activeDivisionId,
   onSelectDivision,
   onOpenSetupModal,
+  onOpenRosterManager,
   isAdmin = true,
 }) => {
   const divisions = propDivisions || tournament?.divisions || [];
   if (divisions.length === 0) return null;
 
   const currentId = activeDivisionId || divisions[0]?.id;
+  const currentDiv = divisions.find((d) => d.id === currentId);
 
   return (
     <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3.5 shadow-lg backdrop-blur-md space-y-2.5">
@@ -48,15 +51,28 @@ export const DivisionSwitcherBar: React.FC<DivisionSwitcherBarProps> = ({
           </div>
         </div>
 
-        {isAdmin && onOpenSetupModal && (
-          <button
-            onClick={onOpenSetupModal}
-            className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-500/30 px-2.5 py-1 rounded-xl transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thêm / Quản Lý Bảng Đấu</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isAdmin && onOpenRosterManager && (
+            <button
+              onClick={onOpenRosterManager}
+              className="text-[11px] font-bold text-emerald-300 hover:text-emerald-200 flex items-center gap-1.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 px-3 py-1.5 rounded-xl transition-all shadow-sm"
+              title="Nhập danh sách đấu thủ cho bảng đang chọn"
+            >
+              <Users className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Chỉnh Sửa Player {currentDiv ? `(${currentDiv.name})` : ''}</span>
+            </button>
+          )}
+
+          {isAdmin && onOpenSetupModal && (
+            <button
+              onClick={onOpenSetupModal}
+              className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-500/30 px-2.5 py-1.5 rounded-xl transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm Bảng Đấu</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Division Tabs Horizontal Scroll */}

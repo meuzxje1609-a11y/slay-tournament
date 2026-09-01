@@ -199,6 +199,58 @@ export default function App() {
     }
   };
 
+  const handleUpdateParticipants = (updatedParticipants: Participant[]) => {
+    if (!activeTournament) return;
+
+    if (hasDivisions && activeDivision) {
+      const updatedDivisions = (activeTournament.divisions || []).map((d) => {
+        if (d.id === activeDivision.id) {
+          const divFormat = d.format || activeTournament.format;
+          const newRounds = generateRoundsForDivision(
+            updatedParticipants,
+            divFormat,
+            activeTournament.settings
+          );
+          return {
+            ...d,
+            participants: updatedParticipants,
+            rounds: newRounds,
+          };
+        }
+        return d;
+      });
+
+      const currentDiv = updatedDivisions.find((d) => d.id === activeDivision.id);
+      const allParticipants = updatedDivisions.flatMap((d) => d.participants);
+
+      const updated: Tournament = {
+        ...activeTournament,
+        divisions: updatedDivisions,
+        participants: allParticipants,
+        rounds: currentDiv ? currentDiv.rounds : activeTournament.rounds,
+      };
+      updateTournament(updated);
+    } else {
+      let newRounds = activeTournament.rounds;
+      if (updatedParticipants.length >= 2) {
+        if (activeTournament.format === 'single_elimination') {
+          newRounds = generateSingleElimination(updatedParticipants, activeTournament.settings);
+        } else if (activeTournament.format === 'double_elimination') {
+          newRounds = generateDoubleElimination(updatedParticipants, activeTournament.settings);
+        } else {
+          newRounds = generateRoundRobin(updatedParticipants, activeTournament.settings);
+        }
+      }
+
+      const updated: Tournament = {
+        ...activeTournament,
+        participants: updatedParticipants,
+        rounds: newRounds,
+      };
+      updateTournament(updated);
+    }
+  };
+
 
   // Match score submission
   const handleSaveMatchResults = (
@@ -263,16 +315,6 @@ export default function App() {
         : undefined,
     };
 
-    updateTournament(updated);
-  };
-
-  const handleUpdateParticipants = (updatedParticipants: Participant[]) => {
-    if (!activeTournament) return;
-    const updated = {
-      ...activeTournament,
-      participants: updatedParticipants,
-      updatedAt: Date.now(),
-    };
     updateTournament(updated);
   };
 
@@ -766,6 +808,15 @@ export default function App() {
                     </button>
 
                     <button
+                      id="btn-hero-manage-roster"
+                      onClick={() => setIsRosterManagerOpen(true)}
+                      className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-purple-600/25 flex items-center gap-2 transition-all hover:scale-105"
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Chỉnh Sửa Player / Team ({activeDivision ? activeDivision.participants.length : activeTournament.participants.length})</span>
+                    </button>
+
+                    <button
                       id="btn-hero-export-discord"
                       onClick={() => setIsDiscordModalOpen(true)}
                       className="px-3.5 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-[#5865F2]/25 flex items-center gap-2 transition-all"
@@ -796,6 +847,7 @@ export default function App() {
                 divisions={activeTournament.divisions}
                 activeDivisionId={activeTournament.activeDivisionId || activeTournament.divisions[0]?.id}
                 onSelectDivision={handleSelectDivision}
+                onOpenRosterManager={() => setIsRosterManagerOpen(true)}
                 onAddDivision={handleAddDivision}
                 onEditDivision={handleEditDivision}
                 onDeleteDivision={handleDeleteDivision}
