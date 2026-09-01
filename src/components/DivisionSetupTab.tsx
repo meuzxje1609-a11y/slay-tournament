@@ -14,6 +14,7 @@ import {
   Layers,
   ChevronRight,
   Shield,
+  GripVertical,
 } from 'lucide-react';
 
 interface DivisionSetupTabProps {
@@ -152,6 +153,26 @@ export const DivisionSetupTab: React.FC<DivisionSetupTabProps> = ({
       .filter((p) => p.id !== pId)
       .map((p, idx) => ({ ...p, seed: idx + 1 }));
     handleUpdateCurrentDiv({ participants: updatedP });
+  };
+
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (!currentDiv || draggedIndex === null || draggedIndex === targetIndex) return;
+    const reordered = [...currentDiv.participants];
+    const [movedItem] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, movedItem);
+    const reseeded = reordered.map((p, idx) => ({ ...p, seed: idx + 1 }));
+    handleUpdateCurrentDiv({ participants: reseeded });
+    setDraggedIndex(null);
   };
 
   const handleShuffleSeeds = () => {
@@ -405,35 +426,56 @@ export const DivisionSetupTab: React.FC<DivisionSetupTabProps> = ({
               </button>
             </div>
 
-            {/* Participants Grid / List for this division */}
-            <div className="max-h-48 overflow-y-auto custom-scrollbar divide-y divide-white/5 bg-slate-950/80 rounded-xl border border-white/10">
-              {currentDiv.participants.map((p, pIdx) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between px-3 py-2 text-xs hover:bg-white/[0.04] transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-[10px] text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                      #{p.seed || pIdx + 1}
-                    </span>
-                    <span className="font-bold text-slate-100 truncate">{p.name}</span>
-                    {p.discordTag && (
-                      <span className="text-[11px] text-slate-400 font-mono truncate">
-                        {p.discordTag}
-                      </span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePlayer(p.id)}
-                    className="p-1 hover:bg-rose-500/20 rounded text-rose-400 transition-colors"
-                    title="Xóa khỏi bảng"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+            {/* Participants Grid / List for this division with Drag & Drop */}
+            <div className="space-y-1">
+              {currentDiv.participants.length > 1 && (
+                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 font-medium">
+                  <span className="flex items-center gap-1">
+                    <GripVertical className="w-3 h-3 text-indigo-400" /> Kéo thả thẻ để đổi hạt giống
+                  </span>
+                  <span>{currentDiv.participants.length} người</span>
                 </div>
-              ))}
+              )}
+
+              <div className="max-h-48 overflow-y-auto custom-scrollbar divide-y divide-white/5 bg-slate-950/80 rounded-xl border border-white/10">
+                {currentDiv.participants.map((p, pIdx) => (
+                  <div
+                    key={p.id}
+                    draggable
+                    onDragStart={() => handleDragStart(pIdx)}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleDrop(pIdx)}
+                    onDragEnd={() => setDraggedIndex(null)}
+                    className={`flex items-center justify-between px-3 py-2 text-xs transition-all cursor-grab active:cursor-grabbing ${
+                      draggedIndex === pIdx
+                        ? 'opacity-40 bg-indigo-950/60 ring-1 ring-indigo-500'
+                        : 'hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <GripVertical className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300 shrink-0" />
+                      <span className="font-mono text-[10px] text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        #{p.seed || pIdx + 1}
+                      </span>
+                      <span className="font-bold text-slate-100 truncate">{p.name}</span>
+                      {p.discordTag && (
+                        <span className="text-[11px] text-slate-400 font-mono truncate">
+                          {p.discordTag}
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePlayer(p.id)}
+                      className="p-1 hover:bg-rose-500/20 rounded text-rose-400 transition-colors"
+                      title="Xóa khỏi bảng"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -43,6 +43,8 @@ import {
   Award,
   FileText,
   Gift,
+  GripVertical,
+  ArrowUpDown,
 } from 'lucide-react';
 
 interface TournamentSetupModalProps {
@@ -349,15 +351,61 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
     setNewTeamDiscord('');
   };
 
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
   const handleRemoveParticipant = (id: string) => {
     const updated = participants.filter((p) => p.id !== id).map((p, idx) => ({ ...p, seed: idx + 1 }));
     setParticipants(updated);
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+    const reordered = [...participants];
+    const [movedItem] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, movedItem);
+    const reseedeed = reordered.map((p, idx) => ({ ...p, seed: idx + 1 }));
+    setParticipants(reseedeed);
+    setDraggedIndex(null);
   };
 
   const handleShuffleSeeds = () => {
     const shuffled = [...participants].sort(() => Math.random() - 0.5);
     const reseedeed = shuffled.map((p, idx) => ({ ...p, seed: idx + 1 }));
     setParticipants(reseedeed);
+  };
+
+  const getRoadmapStages = (count: number) => {
+    if (count <= 2) return [{ icon: '🏆', name: 'Chung Kết (Finals)', color: 'amber' }];
+    if (count <= 4) return [
+      { icon: '🔥', name: '1. Bán Kết (Semi-Finals)', color: 'slate' },
+      { icon: '🏆', name: '2. Chung Kết (Finals)', color: 'amber' }
+    ];
+    if (count <= 8) return [
+      { icon: '🛡️', name: '1. Tứ Kết (Quarter-Finals)', color: 'slate' },
+      { icon: '🔥', name: '2. Bán Kết (Semi-Finals)', color: 'slate' },
+      { icon: '🏆', name: '3. Chung Kết (Finals)', color: 'amber' }
+    ];
+    if (count <= 16) return [
+      { icon: '⚔️', name: '1. Vòng 1/8 (Round of 16)', color: 'indigo' },
+      { icon: '🛡️', name: '2. Tứ Kết (Quarter-Finals)', color: 'slate' },
+      { icon: '🔥', name: '3. Bán Kết (Semi-Finals)', color: 'slate' },
+      { icon: '🏆', name: '4. Chung Kết (Finals)', color: 'amber' }
+    ];
+    return [
+      { icon: '⚡', name: '1. Vòng Sơ Loại (Play-In)', color: 'purple' },
+      { icon: '⚔️', name: '2. Vòng 1/8 (Round of 16)', color: 'indigo' },
+      { icon: '🛡️', name: '3. Tứ Kết (Quarter-Finals)', color: 'slate' },
+      { icon: '🔥', name: '4. Bán Kết (Semi-Finals)', color: 'slate' },
+      { icon: '🏆', name: '5. Chung Kết (Finals)', color: 'amber' }
+    ];
   };
 
   const handleCreateTournament = () => {
@@ -854,29 +902,30 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
                     <div className="bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40 p-3.5 rounded-2xl border border-indigo-500/20 text-xs">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                          <Trophy className="w-4 h-4 text-amber-400" /> Sơ đồ các giai đoạn thi đấu ({participants.length} đội):
+                          <Trophy className="w-4 h-4 text-amber-400" /> Sơ đồ các giai đoạn ({participants.length} đội/tuyển thủ):
                         </span>
                         <span className="text-[11px] font-mono text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md">
-                          4 Giai đoạn chính thức
+                          {getRoadmapStages(participants.length).length} Giai đoạn
                         </span>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-300">
-                        <span className="px-2.5 py-1 rounded-lg bg-indigo-950/80 text-indigo-300 border border-indigo-500/30 font-bold">
-                          ⚔️ 1. Vòng Loại (Qualifiers)
-                        </span>
-                        <span className="text-slate-500">➔</span>
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
-                          🛡️ 2. Tứ Kết (Quarter-Finals)
-                        </span>
-                        <span className="text-slate-500">➔</span>
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
-                          🔥 3. Bán Kết (Semi-Finals)
-                        </span>
-                        <span className="text-slate-500">➔</span>
-                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold flex items-center gap-1">
-                          🏆 4. Chung Kết (Finals)
-                        </span>
+                        {getRoadmapStages(participants.length).map((stg, idx, arr) => (
+                          <React.Fragment key={idx}>
+                            <span className={`px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1 ${
+                              stg.color === 'amber'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold'
+                                : stg.color === 'purple'
+                                ? 'bg-purple-950/80 text-purple-300 border-purple-500/30 font-bold'
+                                : stg.color === 'indigo'
+                                ? 'bg-indigo-950/80 text-indigo-300 border-indigo-500/30'
+                                : 'bg-slate-800 text-slate-300 border-slate-700'
+                            }`}>
+                              {stg.icon} {stg.name}
+                            </span>
+                            {idx < arr.length - 1 && <span className="text-slate-500 font-bold">➔</span>}
+                          </React.Fragment>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -930,34 +979,53 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Participant List Preview */}
-                  <div className="max-h-56 overflow-y-auto custom-scrollbar divide-y divide-white/5 bg-white/[0.03] rounded-2xl border border-white/10">
-                    {participants.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-6 h-6 rounded-lg bg-white/10 font-mono text-[11px] font-bold text-slate-300 flex items-center justify-center shrink-0 border border-white/5">
-                            #{p.seed}
-                          </span>
-                          <span className="font-bold text-slate-200 truncate">{p.name}</span>
-                          {p.discordTag && (
-                            <span className="text-indigo-400 font-mono truncate text-[11px]">
-                              {p.discordTag}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveParticipant(p.id)}
-                          className="p-1 text-slate-400 hover:text-rose-400 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Xóa"
+                  {/* Participant List Preview with Drag & Drop */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 font-medium">
+                      <span className="flex items-center gap-1">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-400" /> Kéo thả thẻ để đổi thứ tự hạt giống (Seed)
+                      </span>
+                      <span>{participants.length} đội</span>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto custom-scrollbar divide-y divide-white/5 bg-white/[0.03] rounded-2xl border border-white/10">
+                      {participants.map((p, idx) => (
+                        <div
+                          key={p.id}
+                          draggable
+                          onDragStart={() => handleDragStart(idx)}
+                          onDragOver={handleDragOver}
+                          onDrop={() => handleDrop(idx)}
+                          onDragEnd={() => setDraggedIndex(null)}
+                          className={`flex items-center justify-between px-3 py-2 text-xs transition-all cursor-grab active:cursor-grabbing ${
+                            draggedIndex === idx
+                              ? 'opacity-40 bg-indigo-950/60 ring-1 ring-indigo-500'
+                              : 'hover:bg-white/[0.08]'
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <GripVertical className="w-4 h-4 text-slate-500 hover:text-slate-300 shrink-0" />
+                            <span className="w-6 h-6 rounded-lg bg-white/10 font-mono text-[11px] font-bold text-slate-300 flex items-center justify-center shrink-0 border border-white/5">
+                              #{p.seed}
+                            </span>
+                            <span className="font-bold text-slate-200 truncate">{p.name}</span>
+                            {p.discordTag && (
+                              <span className="text-indigo-400 font-mono truncate text-[11px]">
+                                {p.discordTag}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveParticipant(p.id)}
+                            className="p-1 text-slate-400 hover:text-rose-400 hover:bg-white/10 rounded-lg transition-colors"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

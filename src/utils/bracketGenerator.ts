@@ -42,8 +42,8 @@ export function getRoundName(
   if (fromEnd === 0) return 'Chung Kết (Finals)';
   if (fromEnd === 1) return 'Bán Kết (Semi-Finals)';
   if (fromEnd === 2) return 'Tứ Kết (Quarter-Finals)';
-  if (fromEnd === 3) return 'Vòng Loại (Qualifiers)';
-  if (fromEnd === 4) return 'Vòng Sơ Loại (Play-In)';
+  if (fromEnd === 3) return 'Vòng 1/8 (Round of 16)';
+  if (fromEnd === 4) return 'Vòng Sơ Loại (Play-In / Round of 32)';
   return `Vòng Loại ${roundIndex + 1}`;
 }
 
@@ -73,8 +73,8 @@ export function generateSingleElimination(
   const count = participants.length;
   if (count < 2) return [];
 
-  // Minimum 16 bracket (4 stages: Vòng Loại -> Tứ Kết -> Bán Kết -> Chung Kết)
-  const bracketSize = Math.max(16, getNextPowerOfTwo(count));
+  // Dynamic bracket size based on participants (e.g. 4 -> 4, 8 -> 8, 16 -> 16, 32 -> 32)
+  const bracketSize = Math.max(2, getNextPowerOfTwo(count));
   const numRounds = Math.log2(bracketSize);
   const seedOrder = generateSeededOrder(bracketSize);
 
@@ -134,8 +134,8 @@ export function generateSingleElimination(
     if (p1 && !p2) {
       r0Matches[m].status = 'finished';
       r0Matches[m].winnerId = p1.id;
-      r0Matches[m].score1 = 1;
-      r0Matches[m].notes = 'Thắng do đối thủ được Miễn đấu (BYE)';
+      r0Matches[m].score1 = 0;
+      r0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
       // Advance to next round immediately
       if (r0Matches[m].nextMatchId && rounds[1]) {
         const nextMatch = rounds[1].matches.find(match => match.id === r0Matches[m].nextMatchId);
@@ -147,8 +147,8 @@ export function generateSingleElimination(
     } else if (!p1 && p2) {
       r0Matches[m].status = 'finished';
       r0Matches[m].winnerId = p2.id;
-      r0Matches[m].score2 = 1;
-      r0Matches[m].notes = 'Thắng do đối thủ được Miễn đấu (BYE)';
+      r0Matches[m].score2 = 0;
+      r0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
       if (r0Matches[m].nextMatchId && rounds[1]) {
         const nextMatch = rounds[1].matches.find(match => match.id === r0Matches[m].nextMatchId);
         if (nextMatch) {
@@ -261,7 +261,8 @@ export function generateDoubleElimination(
     if (p1 && !p2) {
       wb0Matches[m].status = 'finished';
       wb0Matches[m].winnerId = p1.id;
-      wb0Matches[m].score1 = 1;
+      wb0Matches[m].score1 = 0;
+      wb0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
       if (wb0Matches[m].nextMatchId && rounds[1]) {
         const next = rounds[1].matches.find(mt => mt.id === wb0Matches[m].nextMatchId);
         if (next) {
@@ -272,7 +273,8 @@ export function generateDoubleElimination(
     } else if (!p1 && p2) {
       wb0Matches[m].status = 'finished';
       wb0Matches[m].winnerId = p2.id;
-      wb0Matches[m].score2 = 1;
+      wb0Matches[m].score2 = 0;
+      wb0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
       if (wb0Matches[m].nextMatchId && rounds[1]) {
         const next = rounds[1].matches.find(mt => mt.id === wb0Matches[m].nextMatchId);
         if (next) {

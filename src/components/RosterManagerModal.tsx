@@ -15,6 +15,7 @@ import {
   Shuffle,
   Sparkles,
   Save,
+  GripVertical,
 } from 'lucide-react';
 
 interface RosterManagerModalProps {
@@ -117,6 +118,26 @@ export const RosterManagerModal: React.FC<RosterManagerModalProps> = ({
     setParticipants(parsed);
     setBulkText('');
     setActiveTab('list');
+  };
+
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+    const reordered = [...participants];
+    const [movedItem] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, movedItem);
+    const reseeded = reordered.map((p, idx) => ({ ...p, seed: idx + 1 }));
+    setParticipants(reseeded);
+    setDraggedIndex(null);
   };
 
   const handleShuffle = () => {
@@ -308,15 +329,33 @@ export const RosterManagerModal: React.FC<RosterManagerModalProps> = ({
                   )}
                 </div>
               ) : (
-                /* Participant Cards */
+                /* Participant Cards with Drag & Drop */
                 <div className="space-y-2.5">
-                  {participants.map((p) => {
+                  {isAdmin && participants.length > 1 && (
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 font-medium">
+                      <span className="flex items-center gap-1">
+                        <GripVertical className="w-3.5 h-3.5 text-indigo-400" /> Kéo thả thẻ để hoán đổi vị trí hạt giống (Seed)
+                      </span>
+                      <span>{participants.length} tuyển thủ</span>
+                    </div>
+                  )}
+
+                  {participants.map((p, idx) => {
                     const isEditing = editingId === p.id;
 
                     return (
                       <div
                         key={p.id}
-                        className="bg-slate-950/60 border border-slate-800 hover:border-slate-700 rounded-2xl p-3.5 transition-all"
+                        draggable={isAdmin && !isEditing}
+                        onDragStart={() => handleDragStart(idx)}
+                        onDragOver={handleDragOver}
+                        onDrop={() => handleDrop(idx)}
+                        onDragEnd={() => setDraggedIndex(null)}
+                        className={`bg-slate-950/60 border rounded-2xl p-3.5 transition-all ${
+                          draggedIndex === idx
+                            ? 'opacity-40 bg-indigo-950/60 border-indigo-500 ring-1 ring-indigo-500'
+                            : 'border-slate-800 hover:border-slate-700'
+                        } ${isAdmin && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
                         {isEditing && isAdmin ? (
                           <div className="space-y-3">
@@ -364,6 +403,9 @@ export const RosterManagerModal: React.FC<RosterManagerModalProps> = ({
                         ) : (
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
+                              {isAdmin && (
+                                <GripVertical className="w-4 h-4 text-slate-500 hover:text-slate-300 shrink-0" />
+                              )}
                               <span className="w-7 h-7 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono font-bold text-indigo-400 flex items-center justify-center shrink-0">
                                 #{p.seed}
                               </span>
