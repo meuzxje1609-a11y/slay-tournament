@@ -25,7 +25,8 @@ interface TournamentsHubModalProps {
   activeTournamentId: string;
   isAdmin: boolean;
   onSelectTournament: (id: string) => void;
-  onOpenNewTournamentModal: () => void;
+  onOpenNewTournamentModal?: () => void;
+  onOpenNewTournament?: () => void;
   onDeleteTournament?: (id: string) => void;
   onOpenLogin: () => void;
   onClose: () => void;
@@ -37,10 +38,12 @@ export const TournamentsHubModal: React.FC<TournamentsHubModalProps> = ({
   isAdmin,
   onSelectTournament,
   onOpenNewTournamentModal,
+  onOpenNewTournament,
   onDeleteTournament,
   onOpenLogin,
   onClose,
 }) => {
+  const handleOpenNew = onOpenNewTournamentModal || onOpenNewTournament || (() => {});
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'ongoing' | 'finished'>('all');
   const [filterArchetype, setFilterArchetype] = useState<'all' | 'elimination' | 'points'>('all');
@@ -99,7 +102,7 @@ export const TournamentsHubModal: React.FC<TournamentsHubModalProps> = ({
                 id="btn-hub-create-tournament"
                 onClick={() => {
                   onClose();
-                  onOpenNewTournamentModal();
+                  handleOpenNew();
                 }}
                 className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition-all"
               >

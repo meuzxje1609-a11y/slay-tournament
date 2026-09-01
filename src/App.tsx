@@ -1116,7 +1116,7 @@ export default function App() {
       )}
 
       {/* Match Score & Controller Modal */}
-      {selectedMatch && (
+      {selectedMatch && currentViewTournament && (
         <MatchModal
           match={selectedMatch}
           tournament={currentViewTournament}
@@ -1137,7 +1137,7 @@ export default function App() {
       )}
 
       {/* Schedule Manager Modal */}
-      {isScheduleModalOpen && (
+      {isScheduleModalOpen && currentViewTournament && (
         <ScheduleManagerModal
           tournament={currentViewTournament}
           isAdmin={isAdmin}
@@ -1152,7 +1152,7 @@ export default function App() {
       )}
 
       {/* Discord Markdown Export Modal */}
-      {isDiscordModalOpen && (
+      {isDiscordModalOpen && currentViewTournament && (
         <DiscordExportModal
           tournament={currentViewTournament}
           onClose={() => setIsDiscordModalOpen(false)}
@@ -1160,7 +1160,7 @@ export default function App() {
       )}
 
       {/* Coin Toss & Map Veto Tool */}
-      {isCoinTossOpen && (
+      {isCoinTossOpen && currentViewTournament && (
         <CoinTossModal
           tournament={currentViewTournament}
           onClose={() => setIsCoinTossOpen(false)}
@@ -1168,7 +1168,7 @@ export default function App() {
       )}
 
       {/* Roster & Discord Tags Manager Modal */}
-      {isRosterManagerOpen && (
+      {isRosterManagerOpen && currentViewTournament && (
         <RosterManagerModal
           tournament={currentViewTournament}
           isAdmin={isAdmin}
