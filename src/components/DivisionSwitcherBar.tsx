@@ -4,21 +4,26 @@ import { SectIcon } from './SectIcon';
 import { Swords, Plus, Trophy, CheckCircle2, ChevronRight } from 'lucide-react';
 
 interface DivisionSwitcherBarProps {
-  tournament: Tournament;
+  tournament?: Tournament | null;
+  divisions?: TournamentDivision[];
   activeDivisionId?: string;
   onSelectDivision: (divisionId: string) => void;
   onOpenSetupModal?: () => void;
+  onAddDivision?: (newDiv: Partial<TournamentDivision>) => void;
+  onEditDivision?: (divisionId: string, updatedFields: Partial<TournamentDivision>) => void;
+  onDeleteDivision?: (divisionId: string) => void;
   isAdmin?: boolean;
 }
 
 export const DivisionSwitcherBar: React.FC<DivisionSwitcherBarProps> = ({
   tournament,
+  divisions: propDivisions,
   activeDivisionId,
   onSelectDivision,
   onOpenSetupModal,
   isAdmin = true,
 }) => {
-  const divisions = tournament.divisions || [];
+  const divisions = propDivisions || tournament?.divisions || [];
   if (divisions.length === 0) return null;
 
   const currentId = activeDivisionId || divisions[0]?.id;

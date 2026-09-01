@@ -792,6 +792,7 @@ export default function App() {
             {/* Multi-Division Switcher Bar (Nhiều Bảng Đấu / Tỉ Võ Lưu Phái) */}
             {hasDivisions && activeTournament.divisions && (
               <DivisionSwitcherBar
+                tournament={activeTournament}
                 divisions={activeTournament.divisions}
                 activeDivisionId={activeTournament.activeDivisionId || activeTournament.divisions[0]?.id}
                 onSelectDivision={handleSelectDivision}
