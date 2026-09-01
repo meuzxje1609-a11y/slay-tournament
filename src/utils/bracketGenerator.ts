@@ -75,7 +75,7 @@ export function getBestOfForRound(
   return settings.defaultBestOf || 1;
 }
 
-// Generate Single Elimination Bracket
+// Generate Single Elimination Bracket with Progressive Round Pairing (Max matches, max 1 BYE if odd)
 export function generateSingleElimination(
   participants: Participant[],
   settings: Tournament['settings']
@@ -83,27 +83,26 @@ export function generateSingleElimination(
   const count = participants.length;
   if (count < 2) return [];
 
-  // Bracket sizing logic:
-  // <= 8: bracketSize = 8 (Tứ Kết -> Chung Kết)
-  // <= 16: bracketSize = 16 (Vòng Loại -> Tứ Kết -> Chung Kết)
-  // > 16: bracketSize = 32+ (Vòng Sơ Loại -> Vòng Loại -> Tứ Kết -> Chung Kết)
-  const bracketSize = getStandardBracketSize(count);
-  const numRounds = Math.log2(bracketSize);
-  const seedOrder = generateSeededOrder(bracketSize);
+  // Calculate progressive match counts for each round until 1 match remains
+  // E.g. 19 -> R0: 10 matches (9 full + 1 BYE) -> R1: 5 matches -> R2: 3 matches (2 full + 1 BYE) -> R3: 2 matches (1 full + 1 BYE) -> R4: 1 match (Finals)
+  // E.g. 16 -> R0: 8 -> R1: 4 -> R2: 2 -> R3: 1 (Finals)
+  let currentCount = count;
+  const roundMatchCounts: number[] = [];
+  while (currentCount > 1) {
+    const matches = Math.ceil(currentCount / 2);
+    roundMatchCounts.push(matches);
+    currentCount = matches;
+  }
 
-  // Map participants to seed positions (1-indexed)
-  const seededParticipants = seedOrder.map((seed) => {
-    return participants.find((p) => p.seed === seed) || null;
-  });
-
+  const numRounds = roundMatchCounts.length;
   const rounds: Round[] = [];
 
   // Create empty matches for all rounds
   for (let r = 0; r < numRounds; r++) {
-    const matchesInRound = bracketSize / Math.pow(2, r + 1);
+    const matchesInRound = roundMatchCounts[r];
     const roundBestOf = getBestOfForRound(r, numRounds, settings, 'winners');
-    
     const roundMatches: Match[] = [];
+
     for (let m = 0; m < matchesInRound; m++) {
       const matchId = `match-r${r}-m${m}`;
       const nextMatchId = r < numRounds - 1 ? `match-r${r + 1}-m${Math.floor(m / 2)}` : undefined;
@@ -134,43 +133,68 @@ export function generateSingleElimination(
     });
   }
 
-  // Populate Round 0 with seeded participants
+  // Populate Round 0:
+  // If count is odd: exactly 1 participant gets BYE at match 0 (Seed 1 / Bàn 1), and all remaining participants (count - 1) are paired into matches 1 to matchesCount - 1!
+  // If count is even: all participants are paired into matches 0 to matchesCount - 1 (0 BYEs)!
   const r0Matches = rounds[0].matches;
+  const isOdd = count % 2 !== 0;
+
+  if (isOdd) {
+    // Match 0 is BYE for Seed 1 (participants[0])
+    const p1 = participants[0] || null;
+    r0Matches[0].participant1Id = p1 ? p1.id : undefined;
+    r0Matches[0].participant2Id = undefined;
+
+    // Remaining (count - 1) participants are paired into Match 1, 2, 3...
+    const remaining = participants.slice(1);
+    for (let m = 1; m < r0Matches.length; m++) {
+      const pA = remaining[(m - 1) * 2];
+      const pB = remaining[(m - 1) * 2 + 1];
+      r0Matches[m].participant1Id = pA ? pA.id : undefined;
+      r0Matches[m].participant2Id = pB ? pB.id : undefined;
+    }
+  } else {
+    // Even number of participants: standard pairs
+    for (let m = 0; m < r0Matches.length; m++) {
+      const pA = participants[m * 2];
+      const pB = participants[m * 2 + 1];
+      r0Matches[m].participant1Id = pA ? pA.id : undefined;
+      r0Matches[m].participant2Id = pB ? pB.id : undefined;
+    }
+  }
+
+  // Process BYEs and initial statuses for Round 0
   for (let m = 0; m < r0Matches.length; m++) {
-    const p1 = seededParticipants[m * 2];
-    const p2 = seededParticipants[m * 2 + 1];
+    const match = r0Matches[m];
+    const p1Id = match.participant1Id;
+    const p2Id = match.participant2Id;
 
-    r0Matches[m].participant1Id = p1 ? p1.id : undefined;
-    r0Matches[m].participant2Id = p2 ? p2.id : undefined;
-
-    // Handle BYEs
-    if (p1 && !p2) {
-      r0Matches[m].status = 'finished';
-      r0Matches[m].winnerId = p1.id;
-      r0Matches[m].score1 = 0;
-      r0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
-      // Advance to next round immediately
-      if (r0Matches[m].nextMatchId && rounds[1]) {
-        const nextMatch = rounds[1].matches.find(match => match.id === r0Matches[m].nextMatchId);
+    if (p1Id && !p2Id) {
+      match.status = 'finished';
+      match.winnerId = p1Id;
+      match.score1 = 0;
+      match.notes = 'Đặc cách vào vòng sau (BYE)';
+      if (match.nextMatchId && rounds[1]) {
+        const nextMatch = rounds[1].matches.find(mt => mt.id === match.nextMatchId);
         if (nextMatch) {
-          if (r0Matches[m].nextMatchSlot === 1) nextMatch.participant1Id = p1.id;
-          else nextMatch.participant2Id = p1.id;
+          if (match.nextMatchSlot === 1) nextMatch.participant1Id = p1Id;
+          else nextMatch.participant2Id = p1Id;
         }
       }
-    } else if (!p1 && p2) {
-      r0Matches[m].status = 'finished';
-      r0Matches[m].winnerId = p2.id;
-      r0Matches[m].score2 = 0;
-      r0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
-      if (r0Matches[m].nextMatchId && rounds[1]) {
-        const nextMatch = rounds[1].matches.find(match => match.id === r0Matches[m].nextMatchId);
+    } else if (!p1Id && p2Id) {
+      match.status = 'finished';
+      match.winnerId = p2Id;
+      match.score2 = 0;
+      match.notes = 'Đặc cách vào vòng sau (BYE)';
+      if (match.nextMatchId && rounds[1]) {
+        const nextMatch = rounds[1].matches.find(mt => mt.id === match.nextMatchId);
         if (nextMatch) {
-          if (r0Matches[m].nextMatchSlot === 1) nextMatch.participant1Id = p2.id;
-          else nextMatch.participant2Id = p2.id;
+          if (match.nextMatchSlot === 1) nextMatch.participant1Id = p2Id;
+          else nextMatch.participant2Id = p2Id;
         }
       }
-    } else if (p1 && p2) {
-      r0Matches[m].status = 'ready';
+    } else if (p1Id && p2Id) {
+      match.status = 'ready';
     }
   }
 
@@ -183,16 +207,16 @@ export function generateSingleElimination(
     });
   }
 
-  // Optional 3rd place match
-  if (settings.hasThirdPlaceMatch && numRounds >= 2) {
+  // Add 3rd place match if enabled
+  if (settings.hasThirdPlaceMatch && rounds.length >= 2) {
     rounds.push({
       id: 'round-third-place',
-      name: 'Tranh Hạng 3 (3rd Place Match)',
+      name: 'Tranh Hạng 3 (3rd Place)',
       bracketSection: 'third_place',
       roundIndex: numRounds,
       bestOf: settings.semisBestOf || settings.defaultBestOf || 3,
       matches: [{
-        id: 'match-third-place',
+        id: 'third-place-m0',
         roundIndex: numRounds,
         matchIndex: 0,
         bracketSection: 'third_place',

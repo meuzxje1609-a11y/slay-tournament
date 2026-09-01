@@ -383,24 +383,46 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
   };
 
   const getRoadmapStages = (count: number) => {
-    if (count <= 8) return [
-      { icon: '🛡️', name: '1. Tứ Kết (Quarter-Finals)', color: 'indigo' },
-      { icon: '🔥', name: '2. Bán Kết (Semi-Finals)', color: 'slate' },
-      { icon: '🏆', name: '3. Chung Kết (Finals)', color: 'amber' }
-    ];
-    if (count <= 16) return [
-      { icon: '⚔️', name: '1. Vòng Loại (Vòng 1/8)', color: 'indigo' },
-      { icon: '🛡️', name: '2. Tứ Kết (Quarter-Finals)', color: 'slate' },
-      { icon: '🔥', name: '3. Bán Kết (Semi-Finals)', color: 'slate' },
-      { icon: '🏆', name: '4. Chung Kết (Finals)', color: 'amber' }
-    ];
-    return [
-      { icon: '⚡', name: '1. Vòng Sơ Loại (Play-In)', color: 'purple' },
-      { icon: '⚔️', name: '2. Vòng 1/8 (Round of 16)', color: 'indigo' },
-      { icon: '🛡️', name: '3. Tứ Kết (Quarter-Finals)', color: 'slate' },
-      { icon: '🔥', name: '4. Bán Kết (Semi-Finals)', color: 'slate' },
-      { icon: '🏆', name: '5. Chung Kết (Finals)', color: 'amber' }
-    ];
+    let currentCount = count;
+    let totalRounds = 0;
+    while (currentCount > 1) {
+      totalRounds++;
+      currentCount = Math.ceil(currentCount / 2);
+    }
+    if (totalRounds === 0) totalRounds = 1;
+
+    const stages = [];
+    for (let r = 0; r < totalRounds; r++) {
+      const fromEnd = totalRounds - 1 - r;
+      let icon = '⚔️';
+      let color = 'slate';
+      let name = `Vòng ${r + 1}`;
+
+      if (fromEnd === 0) {
+        icon = '🏆';
+        color = 'amber';
+        name = `${r + 1}. Chung Kết (Finals)`;
+      } else if (fromEnd === 1) {
+        icon = '🔥';
+        color = 'slate';
+        name = `${r + 1}. Bán Kết (Semi-Finals)`;
+      } else if (fromEnd === 2) {
+        icon = '🛡️';
+        color = 'slate';
+        name = `${r + 1}. Tứ Kết (Quarter-Finals)`;
+      } else if (fromEnd === 3) {
+        icon = '⚔️';
+        color = 'indigo';
+        name = `${r + 1}. Vòng 1/8 (Round of 16)`;
+      } else {
+        icon = '⚡';
+        color = 'purple';
+        name = `${r + 1}. Vòng Sơ Loại (Play-In)`;
+      }
+
+      stages.push({ icon, name, color });
+    }
+    return stages;
   };
 
   const handleCreateTournament = () => {
