@@ -13,10 +13,6 @@ import {
 } from '../types/tournament';
 import {
   GAME_PRESETS,
-  SAMPLE_PARTICIPANTS_1V1,
-  SAMPLE_PARTICIPANTS_5V5_VALORANT,
-  SAMPLE_PARTICIPANTS_16_TEAMS,
-  SAMPLE_PARTICIPANTS_5V5_ARAM,
   SAMPLE_SECT_DIVISIONS,
 } from '../data/presets';
 import {
@@ -249,7 +245,7 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
   const [participants, setParticipants] = useState<Participant[]>(
     initialTournament?.participants && initialTournament.participants.length > 0
       ? initialTournament.participants
-      : SAMPLE_PARTICIPANTS_5V5_VALORANT
+      : []
   );
 
   // Multi-Division Support
@@ -303,7 +299,7 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
     } else if (preset.id === 'valorant_5v5') {
       setName('Giải Valorant 5v5 Discord Community Cup');
       setIsMultiDivision(false);
-      setParticipants(SAMPLE_PARTICIPANTS_5V5_VALORANT);
+      setParticipants([]);
       setDraftMode('tournament_draft');
       setBansPerTeam(2);
     }
@@ -849,34 +845,7 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
                       >
                         <Shuffle className="w-3.5 h-3.5 text-indigo-400" /> Xáo trộn
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setParticipants(SAMPLE_PARTICIPANTS_16_TEAMS)}
-                        className="px-2.5 py-1 text-xs font-bold bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-lg border border-indigo-500/30"
-                      >
-                        ✨ Mẫu 16 Đội (Chuẩn 4 Vòng)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setParticipants(SAMPLE_PARTICIPANTS_5V5_VALORANT)}
-                        className="px-2.5 py-1 text-xs font-medium bg-white/10 hover:bg-white/15 text-slate-300 rounded-lg border border-white/10"
-                      >
-                        Valorant (16 Đội)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setParticipants(SAMPLE_PARTICIPANTS_5V5_ARAM)}
-                        className="px-2.5 py-1 text-xs font-medium bg-white/10 hover:bg-white/15 text-slate-300 rounded-lg border border-white/10"
-                      >
-                        ARAM (16 Đội)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setParticipants(SAMPLE_PARTICIPANTS_1V1)}
-                        className="px-2.5 py-1 text-xs font-medium bg-white/10 hover:bg-white/15 text-slate-300 rounded-lg border border-white/10"
-                      >
-                        Solo 1v1 (16 Players)
-                      </button>
+
                     </div>
                   </div>
 
