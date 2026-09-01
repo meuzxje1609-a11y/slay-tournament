@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tournament, TournamentDivision } from '../types/tournament';
 import { SectIcon } from './SectIcon';
-import { Swords, Plus, Trophy, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Swords, Plus, Trophy, CheckCircle2, ChevronRight, Users } from 'lucide-react';
 
 interface DivisionSwitcherBarProps {
   tournament?: Tournament | null;
