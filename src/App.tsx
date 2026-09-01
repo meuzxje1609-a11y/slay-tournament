@@ -16,7 +16,7 @@ import {
   syncMastersToAPI,
 } from './utils/storage';
 import { advanceMatchWinner, generateRoundsForDivision } from './utils/bracketGenerator';
-import { GAME_PRESETS } from './data/presets';
+import { GAME_PRESETS } from './data';
 
 import { Navbar } from './components/Navbar';
 import { BracketTree } from './components/BracketTree';
