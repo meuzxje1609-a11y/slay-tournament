@@ -64,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showImageDropdown, setShowImageDropdown] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const gamePreset = GAME_PRESETS.find((g) => g.id === tournament.game);
+  const gamePreset = tournament ? GAME_PRESETS.find((g) => g.id === tournament.game) : undefined;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -227,7 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-500 uppercase">
                           Từng vòng đấu riêng biệt:
                         </div>
-                        {tournament.rounds.map((round) => (
+                        {tournament?.rounds?.map((round) => (
                           <button
                             key={round.id}
                             onClick={() => handleDownloadBracketImage(`round-grid-section-${round.id}`, round.name)}

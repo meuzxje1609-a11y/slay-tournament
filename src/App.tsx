@@ -106,8 +106,12 @@ export default function App() {
     const list = loadTournaments();
     setTournaments(list);
     const savedActiveId = getActiveTournamentId();
-    const current = list.find((t) => t.id === savedActiveId) || list[0] || createDefaultTournament();
-    setActiveId(current.id);
+    const current = list.find((t) => t.id === savedActiveId) || list[0] || null;
+    if (current) {
+      setActiveId(current.id);
+    } else {
+      setActiveId('');
+    }
 
     // Load auth status
     const authState = getAdminAuthState();
@@ -138,7 +142,7 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, []);
 
-  const activeTournament = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0];
+  const activeTournament = tournaments.find((t) => t.id === activeTournamentId) || tournaments[0] || null;
 
   // Auth Handlers
   const handleLoginSuccess = () => {
@@ -531,36 +535,153 @@ export default function App() {
       {/* Main Content Dashboard */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {!activeTournament ? (
-          /* Empty State khi chưa có giải đấu nào */
-          <div className="text-center py-16 px-6 rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl max-w-2xl mx-auto space-y-6">
-            <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
-              <Trophy className="w-10 h-10" />
+          /* Landing Page & Dashboard khi chưa có giải đấu nào */
+          <div className="space-y-8 animate-in fade-in duration-300">
+            {/* Hero Welcome Banner */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/50 to-slate-900 border border-slate-800 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 relative z-10">
+                {/* Left: Introduction & Admin CTAs */}
+                <div className="space-y-4 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3.5 py-1 rounded-full text-xs font-extrabold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 font-mono">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Slay Esports Hub
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                      Mùa Giải Mới
+                    </span>
+                    {isAdmin ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-mono">
+                        👑 Quản trị viên
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800/80 text-slate-400 border border-slate-700/80 flex items-center gap-1">
+                        👁️ Khách xem
+                      </span>
+                    )}
+                  </div>
+
+                  <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                    Hệ Thống Quản Lý Giải Đấu & Sơ Đồ Nhánh Đấu
+                  </h2>
+
+                  <p className="text-sm text-slate-300 leading-relaxed max-w-2xl">
+                    Nền tảng tổ chức giải đấu Esports đa game cho cộng đồng Discord: Tự động phân nhánh loại trực tiếp, nhánh thắng nhánh thua, vòng tròn tính điểm, xuất lịch đấu và vinh danh cao thủ Thất Tuyệt Bảng.
+                  </p>
+
+                  {/* Actions according to Role */}
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    {isAdmin ? (
+                      <>
+                        <button
+                          id="btn-admin-create-first-tournament"
+                          onClick={() => {
+                            setIsEditMode(false);
+                            setIsSetupModalOpen(true);
+                          }}
+                          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm flex items-center gap-2 shadow-xl shadow-indigo-600/30 transition-all hover:scale-105"
+                        >
+                          <Plus className="w-4 h-4" /> Khởi Tạo Giải Đấu Mới
+                        </button>
+                        <button
+                          onClick={() => setIsThatTuyetModalOpen(true)}
+                          className="px-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 font-bold text-sm flex items-center gap-2 transition-colors"
+                        >
+                          <Trophy className="w-4 h-4 text-amber-400" /> Quản Lý Thất Tuyệt Bảng
+                        </button>
+                        <button
+                          onClick={handleImportJSON}
+                          className="px-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-sm flex items-center gap-2 transition-colors"
+                        >
+                          <UploadCloud className="w-4 h-4 text-indigo-400" /> Nhập File JSON
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          id="btn-guest-login-first"
+                          onClick={() => setIsLoginModalOpen(true)}
+                          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-sm flex items-center gap-2 shadow-xl shadow-amber-500/25 transition-all hover:scale-105"
+                        >
+                          <Lock className="w-4 h-4" /> Đăng Nhập Quản Trị Viên
+                        </button>
+                        <button
+                          onClick={() => setIsTournamentsHubOpen(true)}
+                          className="px-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-semibold text-sm flex items-center gap-2 transition-colors"
+                        >
+                          <LayoutGrid className="w-4 h-4 text-indigo-400" /> Xem Danh Sách Giải ({tournaments.length})
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Ô Thất Tuyệt Bảng */}
+                <div className="w-full lg:w-auto shrink-0 flex justify-center lg:justify-end">
+                  <ThatTuyetBangWidget
+                    masters={thatTuyetMasters}
+                    onUpdateMasters={handleUpdateThatTuyetMasters}
+                    onOpenModal={() => setIsThatTuyetModalOpen(true)}
+                    onQuickExportDiscord={() => setIsThatTuyetModalOpen(true)}
+                    isAdmin={isAdmin}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white tracking-tight">Chưa Có Giải Đấu Nào</h2>
-              <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-                Hệ thống giải đấu đang trống. Bạn có thể bắt đầu tạo giải đấu Esports mới với sơ đồ nhánh đấu và lịch thi đấu tự động.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              {isAdmin ? (
-                <button
-                  onClick={() => {
-                    setIsEditMode(false);
-                    setIsSetupModalOpen(true);
-                  }}
-                  className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105"
-                >
-                  <Plus className="w-4 h-4" /> Tạo Giải Đấu Mới
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsLoginModalOpen(true)}
-                  className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105"
-                >
-                  <Lock className="w-4 h-4" /> Đăng Nhập Quản Trị Viên
-                </button>
-              )}
+
+            {/* Quick Game Presets Selector Grid */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-indigo-400" /> Các Tựa Game & Thể Thức Thi Đấu
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {isAdmin
+                      ? 'Chọn một tựa game bên dưới để tạo ngay giải đấu với cấu hình chuẩn Esports'
+                      : 'Hệ thống hỗ trợ đa dạng mọi tựa game Esports và thể thức nhánh đấu'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {GAME_PRESETS.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/40 transition-all flex flex-col justify-between space-y-4 hover:shadow-xl group"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                          {preset.badge}
+                        </span>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {preset.teamSize}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors">
+                        {preset.name}
+                      </h4>
+                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                        {preset.description}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (!isAdmin) {
+                          setIsLoginModalOpen(true);
+                          return;
+                        }
+                        setIsEditMode(false);
+                        setIsSetupModalOpen(true);
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> {isAdmin ? 'Tạo Giải Này' : 'Đăng nhập để tạo'}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
