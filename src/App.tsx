@@ -313,16 +313,7 @@ export default function App() {
     input.click();
   };
 
-  if (!activeTournament) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white p-4">
-        <div className="text-center space-y-4">
-          <Trophy className="w-12 h-12 text-indigo-400 mx-auto animate-bounce" />
-          <h2 className="text-xl font-bold">Đang khởi tạo giải đấu Esports...</h2>
-        </div>
-      </div>
-    );
-  }
+
 
   // Multi-Division Handling
   const hasDivisions = Boolean(activeTournament && activeTournament.divisions && activeTournament.divisions.length > 0);
