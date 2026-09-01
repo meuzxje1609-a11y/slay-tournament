@@ -6,15 +6,18 @@ import { Table, Trophy, Flame } from 'lucide-react';
 
 interface RoundRobinViewProps {
   tournament: Tournament;
-  onOpenMatchModal: (match: Match) => void;
+  onOpenMatchModal?: (match: Match) => void;
+  onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
 }
 
 export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
   tournament,
   onOpenMatchModal,
+  onSelectMatch,
   onQuickWinner,
 }) => {
+  const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const standings = calculateRoundRobinStandings(tournament.participants, tournament.rounds);
 
   return (
@@ -162,7 +165,7 @@ export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
                     key={match.id}
                     match={match}
                     participants={tournament.participants}
-                    onOpenMatchModal={onOpenMatchModal}
+                    onOpenMatchModal={handleOpenMatchModal}
                     onQuickWinner={onQuickWinner}
                   />
                 ))}

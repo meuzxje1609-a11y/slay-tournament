@@ -20,15 +20,18 @@ import {
 
 interface BracketTreeProps {
   tournament: Tournament;
-  onOpenMatchModal: (match: Match) => void;
+  onOpenMatchModal?: (match: Match) => void;
+  onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
 }
 
 export const BracketTree: React.FC<BracketTreeProps> = ({
   tournament,
   onOpenMatchModal,
+  onSelectMatch,
   onQuickWinner,
 }) => {
+  const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [displayMode, setDisplayMode] = useState<'grid' | 'tree'>('grid');
@@ -331,7 +334,7 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                           key={match.id}
                           match={match}
                           participants={tournament.participants}
-                          onOpenMatchModal={onOpenMatchModal}
+                          onOpenMatchModal={handleOpenMatchModal}
                           onQuickWinner={onQuickWinner}
                         />
                       ))}
@@ -378,7 +381,7 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                             <MatchCard
                               match={thirdPlaceRound.matches[0]}
                               participants={tournament.participants}
-                              onOpenMatchModal={onOpenMatchModal}
+                              onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
                             />
                           </div>
@@ -441,7 +444,7 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                             key={match.id}
                             match={match}
                             participants={tournament.participants}
-                            onOpenMatchModal={onOpenMatchModal}
+                            onOpenMatchModal={handleOpenMatchModal}
                             onQuickWinner={onQuickWinner}
                           />
                         ))}

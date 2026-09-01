@@ -5,15 +5,18 @@ import { Trophy, ArrowUpRight, ArrowDownRight, Crown, LayoutGrid, GitBranch, Awa
 
 interface DoubleEliminationViewProps {
   tournament: Tournament;
-  onOpenMatchModal: (match: Match) => void;
+  onOpenMatchModal?: (match: Match) => void;
+  onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
 }
 
 export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
   tournament,
   onOpenMatchModal,
+  onSelectMatch,
   onQuickWinner,
 }) => {
+  const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const [activeTab, setActiveTab] = useState<'all' | 'upper' | 'lower' | 'grand_final' | string>('all');
   const [displayMode, setDisplayMode] = useState<'grid' | 'tree'>('grid');
 
@@ -168,7 +171,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                         key={match.id}
                         match={match}
                         participants={tournament.participants}
-                        onOpenMatchModal={onOpenMatchModal}
+                        onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
                       />
                     ))}
@@ -190,7 +193,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                           key={m.id}
                           match={m}
                           participants={tournament.participants}
-                          onOpenMatchModal={onOpenMatchModal}
+                          onOpenMatchModal={handleOpenMatchModal}
                           onQuickWinner={onQuickWinner}
                         />
                       ))}
@@ -246,7 +249,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                               key={match.id}
                               match={match}
                               participants={tournament.participants}
-                              onOpenMatchModal={onOpenMatchModal}
+                              onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
                             />
                           ))}
@@ -281,7 +284,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                               key={match.id}
                               match={match}
                               participants={tournament.participants}
-                              onOpenMatchModal={onOpenMatchModal}
+                              onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
                             />
                           ))}
@@ -313,7 +316,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                         key={m.id}
                         match={m}
                         participants={tournament.participants}
-                        onOpenMatchModal={onOpenMatchModal}
+                        onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
                       />
                     ))}

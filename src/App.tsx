@@ -866,132 +866,135 @@ export default function App() {
                 {currentViewTournament.format === 'double_elimination' ? (
                   <DoubleEliminationView
                     tournament={currentViewTournament}
+                    onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
                   />
                 ) : currentViewTournament.format === 'round_robin' ? (
                   <RoundRobinView
                     tournament={currentViewTournament}
+                    onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
                   />
                 ) : (
                   <BracketTree
                     tournament={currentViewTournament}
+                    onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
                   />
                 )}
               </div>
             )}
-          </>
-        )}
 
-        {activeView === 'rules' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
-            {/* Rules summary Card */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Shield className="w-5 h-5 text-indigo-400" /> Luật Thi Đấu & Cấm Chọn (Ban/Pick)
-              </h3>
+            {activeView === 'rules' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
+                {/* Rules summary Card */}
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-indigo-400" /> Luật Thi Đấu & Cấm Chọn (Ban/Pick)
+                  </h3>
 
-              <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
-                  <span className="text-slate-400">Dạng trận đấu:</span>
-                  <span className="font-bold text-indigo-400 flex items-center gap-1.5">
-                    {(() => {
-                      const f = getFormatDisplayLabel(activeTournament.format);
-                      return `${f.emoji} ${f.archetypeLabel} (${f.subLabel})`;
-                    })()}
-                  </span>
-                </div>
-
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
-                  <span className="text-slate-400">Quy chuẩn ván đấu:</span>
-                  <span className="font-bold text-amber-400">
-                    Vòng ngoài: BO{activeTournament.settings.defaultBestOf || 1} • Tứ kết: BO{activeTournament.settings.quartersBestOf || 3} • Bán kết: BO{activeTournament.settings.semisBestOf || 3} • Chung kết: BO{activeTournament.settings.finalsBestOf || 5}
-                  </span>
-                </div>
-
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
-                  <span className="text-slate-400">Cấm/Chọn & Chọn Bên:</span>
-                  <span className="font-bold text-cyan-400">
-                    {activeTournament.settings.rulesConfig?.draftMode === 'fearless_draft'
-                      ? 'Fearless Draft'
-                      : activeTournament.settings.rulesConfig?.draftMode === 'quick_3_ban'
-                      ? '3 Ban'
-                      : activeTournament.settings.rulesConfig?.draftMode === 'tournament_draft'
-                      ? '5 Ban Tournament'
-                      : 'Chuẩn'} • {activeTournament.settings.rulesConfig?.bansPerTeam ?? 5} Ban/Đội
-                  </span>
-                </div>
-
-                {activeTournament.format === 'round_robin' && (
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
-                    <span className="text-slate-400">Quy tắc tính điểm BXH:</span>
-                    <span className="font-bold text-emerald-400">
-                      Thắng: +{activeTournament.settings.rulesConfig?.winPoints ?? 3}đ • Hòa: +{activeTournament.settings.rulesConfig?.drawPoints ?? 1}đ • Thua: +{activeTournament.settings.rulesConfig?.lossPoints ?? 0}đ
-                    </span>
-                  </div>
-                )}
-
-                {activeTournament.settings.rulesText && (
-                  <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/20 space-y-2">
-                    <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-                      <FileText className="w-4 h-4" /> Luật Thi Đấu Văn Bản & Quy Định Chi Tiết:
+                  <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <span className="text-slate-400">Dạng trận đấu:</span>
+                      <span className="font-bold text-indigo-400 flex items-center gap-1.5">
+                        {(() => {
+                          const f = getFormatDisplayLabel(activeTournament.format);
+                          return `${f.emoji} ${f.archetypeLabel} (${f.subLabel})`;
+                        })()}
+                      </span>
                     </div>
-                    <p className="text-slate-300 whitespace-pre-line text-xs font-mono bg-slate-900/60 p-3 rounded-lg border border-white/5 leading-relaxed">
-                      {activeTournament.settings.rulesText}
-                    </p>
+
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <span className="text-slate-400">Quy chuẩn ván đấu:</span>
+                      <span className="font-bold text-amber-400">
+                        Vòng ngoài: BO{activeTournament.settings.defaultBestOf || 1} • Tứ kết: BO{activeTournament.settings.quartersBestOf || 3} • Bán kết: BO{activeTournament.settings.semisBestOf || 3} • Chung kết: BO{activeTournament.settings.finalsBestOf || 5}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <span className="text-slate-400">Cấm/Chọn & Chọn Bên:</span>
+                      <span className="font-bold text-cyan-400">
+                        {activeTournament.settings.rulesConfig?.draftMode === 'fearless_draft'
+                          ? 'Fearless Draft'
+                          : activeTournament.settings.rulesConfig?.draftMode === 'quick_3_ban'
+                          ? '3 Ban'
+                          : activeTournament.settings.rulesConfig?.draftMode === 'tournament_draft'
+                          ? '5 Ban Tournament'
+                          : 'Chuẩn'} • {activeTournament.settings.rulesConfig?.bansPerTeam ?? 5} Ban/Đội
+                      </span>
+                    </div>
+
+                    {activeTournament.format === 'round_robin' && (
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span className="text-slate-400">Quy tắc tính điểm BXH:</span>
+                        <span className="font-bold text-emerald-400">
+                          Thắng: +{activeTournament.settings.rulesConfig?.winPoints ?? 3}đ • Hòa: +{activeTournament.settings.rulesConfig?.drawPoints ?? 1}đ • Thua: +{activeTournament.settings.rulesConfig?.lossPoints ?? 0}đ
+                        </span>
+                      </div>
+                    )}
+
+                    {activeTournament.settings.rulesText && (
+                      <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/20 space-y-2">
+                        <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                          <FileText className="w-4 h-4" /> Luật Thi Đấu Văn Bản & Quy Định Chi Tiết:
+                        </div>
+                        <p className="text-slate-300 whitespace-pre-line text-xs font-mono bg-slate-900/60 p-3 rounded-lg border border-white/5 leading-relaxed">
+                          {activeTournament.settings.rulesText}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    setIsEditMode(true);
-                    setIsSetupModalOpen(true);
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
-                >
-                  Chỉnh Sửa Luật & Thể Thức Này
-                </button>
-              )}
-            </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        setIsEditMode(true);
+                        setIsSetupModalOpen(true);
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                    >
+                      Chỉnh Sửa Luật & Thể Thức Này
+                    </button>
+                  )}
+                </div>
 
-            {/* Quick guide for Discord mods */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-400" /> Hướng Dẫn Vận Hành Giải Đấu Discord
-              </h3>
-              <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-                <ul className="space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Bước 1:</strong> Bấm <strong>"Lịch Đấu"</strong> để tự động chia giờ và phòng Voice cho từng cặp đấu.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Bước 2:</strong> Bấm <strong>"Xuất Discord"</strong> để copy lịch hoặc bảng điểm Markdown gửi thẳng vào kênh thông báo Discord.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Bước 3:</strong> Click vào bất kỳ cặp đấu nào để nhập kết quả tỉ số, hệ thống sẽ <strong>tự động đẩy người thắng</strong> vào vòng sau.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Bước 4:</strong> Bấm <strong>"Tải Ảnh"</strong> để lấy file ảnh sơ đồ chất lượng cao gửi trực tiếp vào server Discord.
-                    </span>
-                  </li>
-                </ul>
+                {/* Quick guide for Discord mods */}
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-400" /> Hướng Dẫn Vận Hành Giải Đấu Discord
+                  </h3>
+                  <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                    <ul className="space-y-2.5">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Bước 1:</strong> Bấm <strong>"Lịch Đấu"</strong> để tự động chia giờ và phòng Voice cho từng cặp đấu.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Bước 2:</strong> Bấm <strong>"Xuất Discord"</strong> để copy lịch hoặc bảng điểm Markdown gửi thẳng vào kênh thông báo Discord.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Bước 3:</strong> Click vào bất kỳ cặp đấu nào để nhập kết quả tỉ số, hệ thống sẽ <strong>tự động đẩy người thắng</strong> vào vòng sau.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Bước 4:</strong> Bấm <strong>"Tải Ảnh"</strong> để lấy file ảnh sơ đồ chất lượng cao gửi trực tiếp vào server Discord.
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </main>
 
