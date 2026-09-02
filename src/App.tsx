@@ -804,32 +804,36 @@ export default function App() {
                       <span>Danh Sách Giải ({tournaments.length})</span>
                     </button>
 
-                    <button
-                      id="btn-hero-schedule-manager"
-                      onClick={() => setIsScheduleModalOpen(true)}
-                      className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-cyan-600/25 flex items-center gap-2 transition-all"
-                    >
-                      <Calendar className="w-4 h-4" />
-                      <span>Lịch Thi Đấu</span>
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          id="btn-hero-schedule-manager"
+                          onClick={() => setIsScheduleModalOpen(true)}
+                          className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-cyan-600/25 flex items-center gap-2 transition-all"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          <span>Lịch Thi Đấu</span>
+                        </button>
 
-                    <button
-                      id="btn-hero-manage-roster"
-                      onClick={() => setIsRosterManagerOpen(true)}
-                      className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-purple-600/25 flex items-center gap-2 transition-all hover:scale-105"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>Chỉnh Sửa Player / Team ({activeDivision ? activeDivision.participants.length : activeTournament.participants.length})</span>
-                    </button>
+                        <button
+                          id="btn-hero-manage-roster"
+                          onClick={() => setIsRosterManagerOpen(true)}
+                          className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-purple-600/25 flex items-center gap-2 transition-all hover:scale-105"
+                        >
+                          <Users className="w-4 h-4" />
+                          <span>Chỉnh Sửa Player / Team ({activeDivision ? activeDivision.participants.length : activeTournament.participants.length})</span>
+                        </button>
 
-                    <button
-                      id="btn-hero-export-discord"
-                      onClick={() => setIsDiscordModalOpen(true)}
-                      className="px-3.5 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-[#5865F2]/25 flex items-center gap-2 transition-all"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Xuất Cho Discord</span>
-                    </button>
+                        <button
+                          id="btn-hero-export-discord"
+                          onClick={() => setIsDiscordModalOpen(true)}
+                          className="px-3.5 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-[#5865F2]/25 flex items-center gap-2 transition-all"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Xuất Cho Discord</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
