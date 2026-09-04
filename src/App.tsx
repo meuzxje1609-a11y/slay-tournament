@@ -203,7 +203,14 @@ export default function App() {
         });
         finalUpdated = {
           ...currentActive,
+          // For a multi-division tournament, the root rounds/placements are
+          // not a division's working copy. Keep them untouched so saving one
+          // table can never replace the aggregate with that table's snapshot.
           ...updated,
+          rounds: currentActive.rounds,
+          championId: currentActive.championId,
+          runnerUpId: currentActive.runnerUpId,
+          thirdPlaceId: currentActive.thirdPlaceId,
           divisions: mergedDivisions,
           participants: mergedDivisions.flatMap((division) => division.participants),
         };
