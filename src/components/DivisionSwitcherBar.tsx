@@ -85,7 +85,9 @@ export const DivisionSwitcherBar: React.FC<DivisionSwitcherBarProps> = ({
             (acc, r) => acc + r.matches.filter((m) => m.status === 'finished').length,
             0
           ) || 0;
-          const isCompleted = div.championId || (totalMatches > 0 && finishedMatches === totalMatches);
+          // A division is complete only after its final has an explicitly saved champion.
+          // Do not treat every match being marked finished as a completed tournament.
+          const isCompleted = Boolean(div.championId);
 
           // Find champion player name if available
           const champion = div.championId

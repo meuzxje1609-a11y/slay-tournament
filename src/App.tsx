@@ -188,9 +188,22 @@ export default function App() {
     const currentActive = tournaments.find((t) => t.id === updated.id);
     if (currentActive && currentActive.divisions && currentActive.divisions.length > 0) {
       if (updated.divisions && updated.divisions.length > 0) {
+        // Merge divisions by id instead of replacing the collection wholesale.
+        // A result edit from one division must never erase another division's data.
+        const incomingById = new Map(updated.divisions.map((division) => [division.id, division]));
+        const mergedDivisions = currentActive.divisions.map((currentDivision) => ({
+          ...currentDivision,
+          ...(incomingById.get(currentDivision.id) || {}),
+        }));
+        updated.divisions.forEach((incomingDivision) => {
+          if (!currentActive.divisions.some((division) => division.id === incomingDivision.id)) {
+            mergedDivisions.push(incomingDivision);
+          }
+        });
         finalUpdated = {
           ...currentActive,
           ...updated,
+          divisions: mergedDivisions,
         };
       } else if (selectedDivisionId) {
         const updatedDivisions = currentActive.divisions.map((d) => {
