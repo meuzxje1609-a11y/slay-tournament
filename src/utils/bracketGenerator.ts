@@ -983,6 +983,24 @@ export function swapBracketMatchSlots(
   }
 
   if (!sourceMatch || !targetMatch) return tournament;
+  if (sourceMatchId === targetMatchId && sourceSlot === targetSlot) return tournament;
+
+  // A manual move invalidates every result that was derived from the old draw.
+  // Clear result fields before recomputing BYE/readiness below so an old winner
+  // cannot silently advance after the participants have changed.
+  for (const round of rounds) {
+    for (const match of round.matches) {
+      match.winnerId = undefined;
+      match.loserId = undefined;
+      match.score1 = 0;
+      match.score2 = 0;
+      match.games = undefined;
+      if (match.notes?.includes('BYE')) match.notes = undefined;
+      if (match.bracketSection !== 'third_place') {
+        match.status = match.participant1Id && match.participant2Id ? 'ready' : 'pending';
+      }
+    }
+  }
 
   // Swap the participant IDs
   const sourcePId = sourceSlot === 1 ? sourceMatch.participant1Id : sourceMatch.participant2Id;
@@ -995,7 +1013,7 @@ export function swapBracketMatchSlots(
   else targetMatch.participant2Id = sourcePId;
 
   // Recompute Round 0 BYE statuses and forward propagation to Round 1
-  const r0Matches = rounds[0].matches;
+  const r0Matches = rounds[0]?.matches || [];
   for (let m = 0; m < r0Matches.length; m++) {
     const match = r0Matches[m];
     const p1 = match.participant1Id;

@@ -60,7 +60,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
       const raw = e.dataTransfer.getData('application/json');
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (data && data.matchId) {
+      if (data && data.matchId && (data.slot === 1 || data.slot === 2)) {
         onSwapMatchSlots(data.matchId, data.slot, match.id, slot);
       }
     } catch (err) {

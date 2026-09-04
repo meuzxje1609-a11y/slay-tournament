@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Match, Participant, Tournament } from '../types/tournament';
 import { GAME_PRESETS } from '../data/presets';
 import {
@@ -48,21 +48,34 @@ export const MatchModal: React.FC<MatchModalProps> = ({
   onClose,
   onSaveMatch,
 }) => {
+  const [score1, setScore1] = useState<number>(0);
+  const [score2, setScore2] = useState<number>(0);
+  const [selectedWinnerId, setSelectedWinnerId] = useState<string>('');
+  const [status, setStatus] = useState<Match['status']>('pending');
+  const [voiceChannel, setVoiceChannel] = useState<string>('');
+  const [mapPicked, setMapPicked] = useState<string>('');
+  const [mvp, setMvp] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [streamUrl, setStreamUrl] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+
+  useEffect(() => {
+    setScore1(match?.score1 ?? 0);
+    setScore2(match?.score2 ?? 0);
+    setSelectedWinnerId(match?.winnerId ?? '');
+    setStatus(match?.status ?? 'pending');
+    setVoiceChannel(match?.voiceChannel ?? '');
+    setMapPicked(match?.mapPicked ?? '');
+    setMvp(match?.mvp ?? '');
+    setNotes(match?.notes ?? '');
+    setStreamUrl(match?.streamUrl ?? '');
+    setScheduledTime(match?.scheduledTime ?? '');
+  }, [match]);
+
   if (!match) return null;
 
   const p1 = tournament.participants.find((p) => p.id === match.participant1Id);
   const p2 = tournament.participants.find((p) => p.id === match.participant2Id);
-
-  const [score1, setScore1] = useState<number>(match.score1 || 0);
-  const [score2, setScore2] = useState<number>(match.score2 || 0);
-  const [selectedWinnerId, setSelectedWinnerId] = useState<string>(match.winnerId || '');
-  const [status, setStatus] = useState<Match['status']>(match.status || 'ready');
-  const [voiceChannel, setVoiceChannel] = useState<string>(match.voiceChannel || '');
-  const [mapPicked, setMapPicked] = useState<string>(match.mapPicked || '');
-  const [mvp, setMvp] = useState<string>(match.mvp || '');
-  const [notes, setNotes] = useState<string>(match.notes || '');
-  const [streamUrl, setStreamUrl] = useState<string>(match.streamUrl || '');
-  const [scheduledTime, setScheduledTime] = useState<string>(match.scheduledTime || '');
 
   // Game preset maps
   const gamePreset = GAME_PRESETS.find((g) => g.id === tournament.game);

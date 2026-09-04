@@ -10,6 +10,7 @@ interface RoundRobinViewProps {
   onOpenMatchModal?: (match: Match) => void;
   onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
+  onSwapMatchSlots?: (sourceMatchId: string, sourceSlot: 1 | 2, targetMatchId: string, targetSlot: 1 | 2) => void;
 }
 
 export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
@@ -18,6 +19,7 @@ export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
   onOpenMatchModal,
   onSelectMatch,
   onQuickWinner,
+  onSwapMatchSlots,
 }) => {
   const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const standings = calculateRoundRobinStandings(tournament.participants, tournament.rounds);
@@ -170,6 +172,7 @@ export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
                     isAdmin={isAdmin}
                     onOpenMatchModal={handleOpenMatchModal}
                     onQuickWinner={onQuickWinner}
+                    onSwapMatchSlots={onSwapMatchSlots}
                   />
                 ))}
               </div>

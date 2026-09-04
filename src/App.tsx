@@ -16,7 +16,14 @@ import {
   fetchMastersFromAPI,
   syncMastersToAPI,
 } from './utils/storage';
-import { advanceMatchWinner, generateRoundsForDivision } from './utils/bracketGenerator';
+import {
+  advanceMatchWinner,
+  generateRoundsForDivision,
+  generateSingleElimination,
+  generateDoubleElimination,
+  generateRoundRobin,
+  swapBracketMatchSlots,
+} from './utils/bracketGenerator';
 import { GAME_PRESETS } from '@/data/presets';
 
 import { Navbar } from './components/Navbar';
@@ -122,7 +129,16 @@ export default function App() {
     // Fetch initial fresh data from API
     fetchTournamentsFromAPI().then((apiList) => {
       if (apiList && apiList.length > 0) {
-        setTournaments(apiList);
+        setTournaments((localList) => {
+          const merged = apiList.map((remote) => {
+            const local = localList.find((item) => item.id === remote.id);
+            return local && (local.updatedAt || 0) > (remote.updatedAt || 0) ? local : remote;
+          });
+          localList.forEach((local) => {
+            if (!merged.some((item) => item.id === local.id)) merged.push(local);
+          });
+          return merged;
+        });
       }
     });
 
@@ -136,7 +152,16 @@ export default function App() {
     const intervalId = setInterval(() => {
       fetchTournamentsFromAPI().then((apiList) => {
         if (apiList && apiList.length > 0) {
-          setTournaments(apiList);
+          setTournaments((localList) => {
+            const merged = apiList.map((remote) => {
+              const local = localList.find((item) => item.id === remote.id);
+              return local && (local.updatedAt || 0) > (remote.updatedAt || 0) ? local : remote;
+            });
+            localList.forEach((local) => {
+              if (!merged.some((item) => item.id === local.id)) merged.push(local);
+            });
+            return merged;
+          });
         }
       });
     }, 10000);
@@ -960,6 +985,16 @@ export default function App() {
                     isAdmin={isAdmin}
                     onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
+                    onSwapMatchSlots={(sourceMatchId, sourceSlot, targetMatchId, targetSlot) => {
+                      const updated = swapBracketMatchSlots(
+                        activeTournament,
+                        sourceMatchId,
+                        sourceSlot,
+                        targetMatchId,
+                        targetSlot
+                      );
+                      updateTournament(updated);
+                    }}
                   />
                 ) : (
                   <BracketTree
