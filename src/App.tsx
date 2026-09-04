@@ -188,8 +188,8 @@ export default function App() {
     const currentActive = tournaments.find((t) => t.id === updated.id);
     if (currentActive && currentActive.divisions && currentActive.divisions.length > 0) {
       if (updated.divisions && updated.divisions.length > 0) {
-        // Merge divisions by id instead of replacing the collection wholesale.
-        // A result edit from one division must never erase another division's data.
+        // Division data is authoritative per id. Never replace the complete
+        // collection with a view that contains only one division's snapshot.
         const incomingById = new Map(updated.divisions.map((division) => [division.id, division]));
         const mergedDivisions = currentActive.divisions.map((currentDivision) => {
           const incomingDivision = incomingById.get(currentDivision.id);
@@ -197,23 +197,14 @@ export default function App() {
           return {
             ...currentDivision,
             ...incomingDivision,
-            // A partial division update must not blank fields owned by the
-            // other views or by an older persisted record.
-            participants: incomingDivision.participants || currentDivision.participants,
-            rounds: incomingDivision.rounds || currentDivision.rounds,
+            participants: incomingDivision.participants ?? currentDivision.participants,
+            rounds: incomingDivision.rounds ?? currentDivision.rounds,
           };
-        });
-        updated.divisions.forEach((incomingDivision) => {
-          if (!currentActive.divisions.some((division) => division.id === incomingDivision.id)) {
-            mergedDivisions.push(incomingDivision);
-          }
         });
         finalUpdated = {
           ...currentActive,
           ...updated,
           divisions: mergedDivisions,
-          // Keep the aggregate participant list consistent without rebuilding
-          // or dropping participants belonging to other divisions.
           participants: mergedDivisions.flatMap((division) => division.participants),
         };
       } else if (selectedDivisionId) {
@@ -392,21 +383,40 @@ export default function App() {
         return m;
       });
 
+    const owningDivisionId = activeTournament.divisions?.find((division) =>
+      division.rounds.some((round) => round.matches.some((match) => match.id === matchId))
+    )?.id;
+    const isolatedDivisions = activeTournament.divisions
+      ? activeTournament.divisions.map((currentDivision) => {
+          if (currentDivision.id !== owningDivisionId) return currentDivision;
+          const incomingDivision = updated.divisions?.find((division) => division.id === currentDivision.id);
+          // Build this division from its own current snapshot. Never take rounds
+          // or participants from the aggregate tournament result, which may be
+          // a temporary view of only the selected division.
+          return {
+            ...currentDivision,
+            ...(incomingDivision || {}),
+            participants: currentDivision.participants,
+            rounds: currentDivision.rounds.map((round) => ({
+              ...round,
+              matches: mapMatches(round.matches),
+            })),
+          };
+        })
+      : undefined;
+
     updated = {
       ...updated,
       rounds: updated.rounds ? updated.rounds.map((r) => ({
         ...r,
         matches: mapMatches(r.matches),
       })) : [],
-      divisions: updated.divisions
-        ? updated.divisions.map((d) => ({
-            ...d,
-            rounds: d.rounds.map((r) => ({
-              ...r,
-              matches: mapMatches(r.matches),
-            })),
-          }))
-        : undefined,
+      // A result belongs to exactly one division. Start from the current
+      // tournament and replace only that division, never the other six.
+      divisions: isolatedDivisions,
+      participants: isolatedDivisions
+        ? isolatedDivisions.flatMap((division) => division.participants)
+        : updated.participants,
       updatedAt: Date.now(),
     };
 
