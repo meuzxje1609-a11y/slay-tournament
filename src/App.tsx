@@ -191,10 +191,18 @@ export default function App() {
         // Merge divisions by id instead of replacing the collection wholesale.
         // A result edit from one division must never erase another division's data.
         const incomingById = new Map(updated.divisions.map((division) => [division.id, division]));
-        const mergedDivisions = currentActive.divisions.map((currentDivision) => ({
-          ...currentDivision,
-          ...(incomingById.get(currentDivision.id) || {}),
-        }));
+        const mergedDivisions = currentActive.divisions.map((currentDivision) => {
+          const incomingDivision = incomingById.get(currentDivision.id);
+          if (!incomingDivision) return currentDivision;
+          return {
+            ...currentDivision,
+            ...incomingDivision,
+            // A partial division update must not blank fields owned by the
+            // other views or by an older persisted record.
+            participants: incomingDivision.participants || currentDivision.participants,
+            rounds: incomingDivision.rounds || currentDivision.rounds,
+          };
+        });
         updated.divisions.forEach((incomingDivision) => {
           if (!currentActive.divisions.some((division) => division.id === incomingDivision.id)) {
             mergedDivisions.push(incomingDivision);
@@ -204,6 +212,9 @@ export default function App() {
           ...currentActive,
           ...updated,
           divisions: mergedDivisions,
+          // Keep the aggregate participant list consistent without rebuilding
+          // or dropping participants belonging to other divisions.
+          participants: mergedDivisions.flatMap((division) => division.participants),
         };
       } else if (selectedDivisionId) {
         const updatedDivisions = currentActive.divisions.map((d) => {
