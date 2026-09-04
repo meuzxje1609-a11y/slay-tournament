@@ -37,7 +37,6 @@ export function sanitizeTournament(t: Tournament): Tournament {
     }
   }
 
-  // 2. Also remove any repeated standard sect names if appended
   const knownSects = ['Toái Mộng', 'Thần Tướng', 'Tố Vấn', 'Cửu Linh', 'Huyết Hà', 'Thiết Y', 'Long Ngâm', 'Huyền Cơ', 'Triều Lam'];
   for (const s of knownSects) {
     const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -45,25 +44,78 @@ export function sanitizeTournament(t: Tournament): Tournament {
     name = name.replace(regex, '');
   }
 
-  // 3. Fallback: if name still has " • ...", clean trailing bullet repeats
   const bulletParts = name.split('•').map(p => p.trim()).filter(Boolean);
   if (bulletParts.length > 1) {
     const base = bulletParts[0];
-    const allRestSameOrDivision = bulletParts.slice(1).every(p => 
-      knownSects.some(k => k.toLowerCase() === p.toLowerCase()) || 
+    const allRestSameOrDivision = bulletParts.slice(1).every(p =>
+      knownSects.some(k => k.toLowerCase() === p.toLowerCase()) ||
       (t.divisions && t.divisions.some(d => d.name.toLowerCase() === p.toLowerCase())) ||
       p.toLowerCase() === base.toLowerCase()
     );
-    if (allRestSameOrDivision) {
-      name = base;
-    }
+    if (allRestSameOrDivision) name = base;
   }
 
   return {
-    ...t,
+    ...repairDivisionData(t),
     name: name.trim() || t.name,
   };
 }
+
+/**
+ * Repairs legacy multi-division data. Older versions generated the same
+ * match IDs in every division, so all lookups were ambiguous after import.
+ * IDs are namespaced per division and all local bracket references follow.
+ */
+function repairDivisionData(tournament: Tournament): Tournament {
+  if (!tournament.divisions?.length) return tournament;
+
+  const divisions = tournament.divisions.map((division) => {
+    const prefix = `${division.id}-`;
+    const matches = division.rounds.flatMap((round) => round.matches);
+    const idMap = new Map<string, string>();
+    const used = new Set<string>();
+
+    matches.forEach((match, index) => {
+      const candidate = match.id.startsWith(prefix) ? match.id : `${prefix}${match.id || `match-${index}`}`;
+      const unique = used.has(candidate) ? `${candidate}-${index}` : candidate;
+      used.add(unique);
+      if (!idMap.has(match.id)) idMap.set(match.id, unique);
+    });
+
+    const rounds = division.rounds.map((round) => ({
+      ...round,
+      matches: round.matches.map((match, index) => {
+        const newId = idMap.get(match.id) || `${prefix}match-${index}`;
+        return {
+          ...match,
+          id: newId,
+          nextMatchId: match.nextMatchId ? (idMap.get(match.nextMatchId) || `${prefix}${match.nextMatchId}`) : undefined,
+          loserNextMatchId: match.loserNextMatchId ? (idMap.get(match.loserNextMatchId) || `${prefix}${match.loserNextMatchId}`) : undefined,
+        };
+      }),
+    }));
+
+    const participantIds = new Set(division.participants.map((participant) => participant.id));
+    return {
+      ...division,
+      rounds,
+      championId: division.championId && participantIds.has(division.championId) ? division.championId : undefined,
+      runnerUpId: division.runnerUpId && participantIds.has(division.runnerUpId) ? division.runnerUpId : undefined,
+      thirdPlaceId: division.thirdPlaceId && participantIds.has(division.thirdPlaceId) ? division.thirdPlaceId : undefined,
+      status: division.championId && participantIds.has(division.championId) ? division.status : 'ongoing',
+    };
+  });
+
+  return {
+    ...tournament,
+    divisions,
+    participants: divisions.flatMap((division) => division.participants),
+    championId: undefined,
+    runnerUpId: undefined,
+    thirdPlaceId: undefined,
+  };
+}
+
 
 export function loadTournaments(): Tournament[] {
   try {

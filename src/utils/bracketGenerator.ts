@@ -742,15 +742,31 @@ export function autoGenerateTournamentSchedule(
 export function generateRoundsForDivision(
   participants: Participant[],
   format: BracketType,
-  settings: Tournament['settings']
+  settings: Tournament['settings'],
+  divisionId?: string,
 ): Round[] {
-  if (format === 'single_elimination') {
-    return generateSingleElimination(participants, settings);
-  } else if (format === 'double_elimination') {
-    return generateDoubleElimination(participants, settings);
-  } else {
-    return generateRoundRobin(participants, settings);
-  }
+  const rounds = format === 'single_elimination'
+    ? generateSingleElimination(participants, settings)
+    : format === 'double_elimination'
+      ? generateDoubleElimination(participants, settings)
+      : generateRoundRobin(participants, settings);
+
+  if (!divisionId) return rounds;
+  const prefix = `${divisionId}-`;
+  const idMap = new Map<string, string>();
+  rounds.flatMap((round) => round.matches).forEach((match) => {
+    idMap.set(match.id, `${prefix}${match.id}`);
+  });
+  return rounds.map((round) => ({
+    ...round,
+    id: `${prefix}${round.id}`,
+    matches: round.matches.map((match) => ({
+      ...match,
+      id: idMap.get(match.id) || `${prefix}${match.id}`,
+      nextMatchId: match.nextMatchId ? (idMap.get(match.nextMatchId) || `${prefix}${match.nextMatchId}`) : undefined,
+      loserNextMatchId: match.loserNextMatchId ? (idMap.get(match.loserNextMatchId) || `${prefix}${match.loserNextMatchId}`) : undefined,
+    })),
+  }));
 }
 
 function reconcileSingleEliminationRounds(rounds: Round[], preserveMatchId?: string): void {

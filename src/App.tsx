@@ -290,7 +290,8 @@ export default function App() {
           const newRounds = generateRoundsForDivision(
             updatedParticipants,
             divFormat,
-            activeTournament.settings
+            activeTournament.settings,
+            d.id
           );
           return {
             ...d,
@@ -351,141 +352,58 @@ export default function App() {
   ) => {
     if (!activeTournament) return;
 
-    let updated = advanceMatchWinner(
-      activeTournament,
-      matchId,
-      winnerId,
-      score1,
-      score2,
-      details.mapPicked,
-      details.mvp
-    );
-
-    const validWinnerId = winnerId ? winnerId : undefined;
-
-    const mapMatches = (matches: Match[]) =>
-      matches.map((m) => {
-        if (m.id === matchId) {
-          const loserId = validWinnerId
-            ? m.participant1Id === validWinnerId
-              ? m.participant2Id
-              : m.participant1Id
-            : undefined;
-
-          return {
-            ...m,
-            score1: Number(score1) || 0,
-            score2: Number(score2) || 0,
-            winnerId: validWinnerId,
-            loserId: loserId,
-            status: details.status,
-            voiceChannel: details.voiceChannel || m.voiceChannel,
-            mapPicked: details.mapPicked || m.mapPicked,
-            mvp: details.mvp || m.mvp,
-            notes: details.notes !== undefined ? details.notes : m.notes,
-            streamUrl: details.streamUrl !== undefined ? details.streamUrl : m.streamUrl,
-            scheduledTime: details.scheduledTime !== undefined ? details.scheduledTime : m.scheduledTime,
-          };
-        }
-        return m;
-      });
-
-    const owningDivisionId = activeTournament.divisions?.find((division) =>
-      division.rounds.some((round) => round.matches.some((match) => match.id === matchId))
-    )?.id;
-    const isolatedDivisions = activeTournament.divisions
-      ? activeTournament.divisions.map((currentDivision) => {
-          if (currentDivision.id !== owningDivisionId) return currentDivision;
-          const incomingDivision = updated.divisions?.find((division) => division.id === currentDivision.id);
-          // Build this division from its own current snapshot. Never take rounds
-          // or participants from the aggregate tournament result, which may be
-          // a temporary view of only the selected division.
-          return {
-            ...currentDivision,
-            ...(incomingDivision || {}),
-            participants: currentDivision.participants,
-            rounds: currentDivision.rounds.map((round) => ({
-              ...round,
-              matches: mapMatches(round.matches),
-            })),
-          };
-        })
-      : undefined;
-
-    updated = {
-      ...updated,
-      rounds: updated.rounds ? updated.rounds.map((r) => ({
-        ...r,
-        matches: mapMatches(r.matches),
-      })) : [],
-      // A result belongs to exactly one division. Start from the current
-      // tournament and replace only that division, never the other six.
-      divisions: isolatedDivisions,
-      participants: isolatedDivisions
-        ? isolatedDivisions.flatMap((division) => division.participants)
-        : updated.participants,
-      updatedAt: Date.now(),
-    };
-
-    // Placement results are controlled by the Admin's manually saved result.
-    // Do not infer or populate any later-round participant slots here.
-    const getPlacement = (rounds: typeof updated.rounds, format: Tournament['format']) => {
-      const roundIndex = rounds.findIndex((round) => round.matches.some((m) => m.id === matchId));
-      const savedMatch = roundIndex >= 0
-        ? rounds[roundIndex].matches.find((m) => m.id === matchId)
-        : undefined;
-      if (!savedMatch) return { isFinal: false, isThirdPlace: false, winnerId: undefined, loserId: undefined };
-
-      const isThirdPlace = savedMatch.bracketSection === 'third_place';
-      const isFinal = savedMatch.bracketSection === 'grand_final' ||
-        (format === 'single_elimination' &&
-          savedMatch.bracketSection === 'winners' &&
-          roundIndex === rounds.length - (updated.settings.hasThirdPlaceMatch ? 2 : 1));
+    const targetDivision = activeTournament.divisions?.find((division) => division.id === activeDivision?.id);
+    const divisionTournament: Tournament = targetDivision
+      ? { ...activeTournament, divisions: undefined, rounds: targetDivision.rounds, participants: targetDivision.participants, format: targetDivision.format, championId: targetDivision.championId, runnerUpId: targetDivision.runnerUpId, thirdPlaceId: targetDivision.thirdPlaceId, status: targetDivision.status }
+      : activeTournament;
+    const advanced = advanceMatchWinner(divisionTournament, matchId, winnerId, score1, score2, details.mapPicked, details.mvp);
+    const savedRounds = advanced.rounds.map((round) => ({
+      ...round,
+      matches: round.matches.map((match) => {
+        if (match.id !== matchId) return match;
+        const validWinnerId = winnerId || undefined;
+        return {
+          ...match,
+          score1: Number(score1) || 0,
+          score2: Number(score2) || 0,
+          winnerId: validWinnerId,
+          loserId: validWinnerId ? (match.participant1Id === validWinnerId ? match.participant2Id : match.participant1Id) : undefined,
+          status: details.status,
+          voiceChannel: details.voiceChannel || match.voiceChannel,
+          mapPicked: details.mapPicked !== undefined ? details.mapPicked : match.mapPicked,
+          mvp: details.mvp !== undefined ? details.mvp : match.mvp,
+          notes: details.notes !== undefined ? details.notes : match.notes,
+          streamUrl: details.streamUrl !== undefined ? details.streamUrl : match.streamUrl,
+          scheduledTime: details.scheduledTime !== undefined ? details.scheduledTime : match.scheduledTime,
+        };
+      }),
+    }));
+    const divisions = activeTournament.divisions?.map((division) => {
+      if (!targetDivision || division.id !== targetDivision.id) return division;
+      const savedMatch = savedRounds.flatMap((round) => round.matches).find((match) => match.id === matchId);
+      const isFinal = savedMatch?.bracketSection === 'grand_final' || (savedMatch?.bracketSection === 'winners' && savedMatch.roundIndex >= savedRounds.length - (activeTournament.settings.hasThirdPlaceMatch ? 2 : 1));
       return {
-        isFinal,
-        isThirdPlace,
-        winnerId: savedMatch.winnerId,
-        loserId: savedMatch.loserId,
+        ...division,
+        rounds: savedRounds,
+        ...(isFinal ? { championId: savedMatch?.winnerId, runnerUpId: savedMatch?.loserId, status: savedMatch?.winnerId ? 'completed' as const : 'ongoing' as const } : {}),
+        ...(savedMatch?.bracketSection === 'third_place' ? { thirdPlaceId: savedMatch.winnerId } : {}),
       };
-    };
+    });
+    updateTournament({
+      ...activeTournament,
+      divisions,
+      participants: divisions ? divisions.flatMap((division) => division.participants) : activeTournament.participants,
+      rounds: targetDivision ? activeTournament.rounds : savedRounds,
+      updatedAt: Date.now(),
+    });
 
-    const topPlacement = getPlacement(updated.rounds, updated.format);
-    if (topPlacement.isFinal || topPlacement.isThirdPlace) {
-      updated = {
-        ...updated,
-        ...(topPlacement.isFinal ? {
-          championId: topPlacement.winnerId,
-          runnerUpId: topPlacement.loserId,
-          status: topPlacement.winnerId ? 'completed' : 'ongoing',
-        } : {}),
-        ...(topPlacement.isThirdPlace ? { thirdPlaceId: topPlacement.winnerId } : {}),
-      };
-    }
+    // The isolated division update above is the only save path.
 
-    if (updated.divisions) {
-      updated = {
-        ...updated,
-        divisions: updated.divisions.map((division) => {
-          const placement = getPlacement(division.rounds, division.format);
-          if (!placement.isFinal && !placement.isThirdPlace) return division;
-          return {
-            ...division,
-            ...(placement.isFinal ? {
-              championId: placement.winnerId,
-              runnerUpId: placement.loserId,
-              status: placement.winnerId ? 'completed' : 'ongoing',
-            } : {}),
-            ...(placement.isThirdPlace ? { thirdPlaceId: placement.winnerId } : {}),
-          };
-        }),
-      };
-    }
-
-    updateTournament(updated);
   };
 
   const handleAssignParticipant = (matchId: string, slot: 1 | 2, participantId?: string) => {
     if (!activeTournament || !isAdmin) return;
+    const target = activeTournament.divisions?.find((d) => d.id === activeDivision?.id);
     const updateRounds = (rounds: any[]) => rounds.map((round) => ({
       ...round,
       matches: round.matches.map((m: Match) => m.id === matchId ? {
@@ -498,14 +416,15 @@ export default function App() {
         status: (slot === 1 ? participantId && m.participant2Id : m.participant1Id && participantId) ? 'ready' : 'pending',
       } : m),
     }));
-    const divisions = activeTournament.divisions?.map((d) => ({ ...d, rounds: updateRounds(d.rounds) }));
-    const updated = divisions ? { ...activeTournament, divisions, rounds: updateRounds(activeTournament.rounds) } : { ...activeTournament, rounds: updateRounds(activeTournament.rounds) };
+    const divisions = activeTournament.divisions?.map((d) => d.id === target?.id ? { ...d, rounds: updateRounds(d.rounds) } : d);
+    const updated = divisions ? { ...activeTournament, divisions, participants: divisions.flatMap((d) => d.participants) } : { ...activeTournament, rounds: updateRounds(activeTournament.rounds) };
     updateTournament(updated);
     setSelectedMatch((current) => current?.id === matchId ? { ...current, ...(slot === 1 ? { participant1Id: participantId } : { participant2Id: participantId }) } : current);
   };
 
   const handleCreateParticipant = (matchId: string, slot: 1 | 2, name: string, discordTag?: string) => {
     if (!activeTournament || !isAdmin) return;
+    const target = activeTournament.divisions?.find((d) => d.id === activeDivision?.id);
     const participant: Participant = {
       id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
@@ -525,13 +444,9 @@ export default function App() {
       } : m),
     }));
     const participants = [...activeTournament.participants, participant];
-    const divisions = activeTournament.divisions?.map((d) => ({
-      ...d,
-      participants: [...d.participants, participant],
-      rounds: assign(d.rounds),
-    }));
+    const divisions = activeTournament.divisions?.map((d) => d.id === target?.id ? { ...d, participants: [...d.participants, participant], rounds: assign(d.rounds) } : d);
     const updated: Tournament = divisions
-      ? { ...activeTournament, participants, divisions, rounds: assign(activeTournament.rounds) }
+      ? { ...activeTournament, participants: divisions.flatMap((d) => d.participants), divisions }
       : { ...activeTournament, participants, rounds: assign(activeTournament.rounds) };
     updateTournament(updated);
     setSelectedMatch((current) => current?.id === matchId ? {
@@ -544,7 +459,7 @@ export default function App() {
   const handleAddMatch = (roundId: string) => {
     if (!activeTournament || !isAdmin) return;
     const createMatch = (round: any): Match => ({
-      id: `match-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `${activeDivision?.id ? `${activeDivision.id}-` : ''}match-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       roundIndex: round.roundIndex,
       matchIndex: round.matches.length,
       bracketSection: round.bracketSection,
@@ -628,10 +543,11 @@ export default function App() {
       newDivData.participants && newDivData.participants.length >= 2
         ? newDivData.participants
         : defaultParticipants;
-    const rounds = generateRoundsForDivision(participants, newDivFormat, activeTournament.settings);
+    const divisionId = `div-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const rounds = generateRoundsForDivision(participants, newDivFormat, activeTournament.settings, divisionId);
 
     const newDivision: TournamentDivision = {
-      id: `div-${Date.now()}`,
+      id: divisionId,
       name: newDivData.name || `Bảng Đấu Mới`,
       sectKey: newDivData.sectKey,
       sectIcon: newDivData.sectIcon || '⚔️',
@@ -661,7 +577,8 @@ export default function App() {
           updatedDiv.rounds = generateRoundsForDivision(
             updatedDiv.participants,
             divFormat,
-            activeTournament.settings
+            activeTournament.settings,
+            updatedDiv.id
           );
         }
         return updatedDiv;

@@ -520,7 +520,7 @@ export const TournamentSetupModal: React.FC<TournamentSetupModalProps> = ({
 
       finalDivisions = divisions.map((div) => {
         const divFormat = div.format || format;
-        const divRounds = generateRoundsForDivision(div.participants, divFormat, settings);
+        const divRounds = generateRoundsForDivision(div.participants, divFormat, settings, div.id);
         return {
           ...div,
           format: divFormat,
