@@ -390,6 +390,87 @@ export default function App() {
     updateTournament(updated);
   };
 
+  const handleAssignParticipant = (matchId: string, slot: 1 | 2, participantId?: string) => {
+    if (!activeTournament || !isAdmin) return;
+    const updateRounds = (rounds: any[]) => rounds.map((round) => ({
+      ...round,
+      matches: round.matches.map((m: Match) => m.id === matchId ? {
+        ...m,
+        ...(slot === 1 ? { participant1Id: participantId } : { participant2Id: participantId }),
+        winnerId: undefined,
+        loserId: undefined,
+        score1: 0,
+        score2: 0,
+        status: (slot === 1 ? participantId && m.participant2Id : m.participant1Id && participantId) ? 'ready' : 'pending',
+      } : m),
+    }));
+    const divisions = activeTournament.divisions?.map((d) => ({ ...d, rounds: updateRounds(d.rounds) }));
+    const updated = divisions ? { ...activeTournament, divisions, rounds: updateRounds(activeTournament.rounds) } : { ...activeTournament, rounds: updateRounds(activeTournament.rounds) };
+    updateTournament(updated);
+    setSelectedMatch((current) => current?.id === matchId ? { ...current, ...(slot === 1 ? { participant1Id: participantId } : { participant2Id: participantId }) } : current);
+  };
+
+  const handleCreateParticipant = (matchId: string, slot: 1 | 2, name: string, discordTag?: string) => {
+    if (!activeTournament || !isAdmin) return;
+    const participant: Participant = {
+      id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      discordTag,
+      seed: activeTournament.participants.length + 1,
+    };
+    const assign = (rounds: any[]) => rounds.map((round) => ({
+      ...round,
+      matches: round.matches.map((m: Match) => m.id === matchId ? {
+        ...m,
+        ...(slot === 1 ? { participant1Id: participant.id } : { participant2Id: participant.id }),
+        winnerId: undefined,
+        loserId: undefined,
+        score1: 0,
+        score2: 0,
+        status: (slot === 1 ? Boolean(participant.id && m.participant2Id) : Boolean(m.participant1Id && participant.id)) ? 'ready' : 'pending',
+      } : m),
+    }));
+    const participants = [...activeTournament.participants, participant];
+    const divisions = activeTournament.divisions?.map((d) => ({
+      ...d,
+      participants: [...d.participants, participant],
+      rounds: assign(d.rounds),
+    }));
+    const updated: Tournament = divisions
+      ? { ...activeTournament, participants, divisions, rounds: assign(activeTournament.rounds) }
+      : { ...activeTournament, participants, rounds: assign(activeTournament.rounds) };
+    updateTournament(updated);
+    setSelectedMatch((current) => current?.id === matchId ? {
+      ...current,
+      ...(slot === 1 ? { participant1Id: participant.id } : { participant2Id: participant.id }),
+    } : current);
+  };
+
+  // Create an empty manual match in the selected round.
+  const handleAddMatch = (roundId: string) => {
+    if (!activeTournament || !isAdmin) return;
+    const createMatch = (round: any): Match => ({
+      id: `match-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      roundIndex: round.roundIndex,
+      matchIndex: round.matches.length,
+      bracketSection: round.bracketSection,
+      participant1Id: undefined,
+      participant2Id: undefined,
+      score1: 0,
+      score2: 0,
+      bestOf: round.bestOf || activeTournament.settings.defaultBestOf || 1,
+      status: 'pending',
+    });
+    if (activeDivision) {
+      const divisions = activeTournament.divisions!.map((division) => division.id === activeDivision.id
+        ? { ...division, rounds: division.rounds.map((round) => round.id === roundId ? { ...round, matches: [...round.matches, createMatch(round)] } : round) }
+        : division);
+      updateTournament({ ...activeTournament, divisions, participants: divisions.flatMap((d) => d.participants), rounds: divisions.find((d) => d.id === activeDivision.id)?.rounds || activeTournament.rounds });
+    } else {
+      updateTournament({ ...activeTournament, rounds: activeTournament.rounds.map((round) => round.id === roundId ? { ...round, matches: [...round.matches, createMatch(round)] } : round) });
+    }
+  };
+
   // JSON Export / Import
   const handleExportJSON = () => {
     const jsonStr = exportTournamentsToJSON(tournaments);
@@ -978,6 +1059,8 @@ export default function App() {
                     onUpdateTournament={updateTournament}
                     onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
+                    onAddMatch={handleAddMatch}
+                    onAddParticipant={(match) => setSelectedMatch(match)}
                   />
                 ) : currentViewTournament.format === 'round_robin' ? (
                   <RoundRobinView
@@ -995,6 +1078,8 @@ export default function App() {
                       );
                       updateTournament(updated);
                     }}
+                    onAddMatch={handleAddMatch}
+                    onAddParticipant={(match) => setSelectedMatch(match)}
                   />
                 ) : (
                   <BracketTree
@@ -1003,6 +1088,7 @@ export default function App() {
                     onUpdateTournament={updateTournament}
                     onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
+                    onAddMatch={handleAddMatch}
                   />
                 )}
               </div>
@@ -1194,6 +1280,8 @@ export default function App() {
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onClose={() => setSelectedMatch(null)}
           onSaveMatch={handleSaveMatchResults}
+          onAssignParticipant={handleAssignParticipant}
+          onCreateParticipant={handleCreateParticipant}
         />
       )}
 

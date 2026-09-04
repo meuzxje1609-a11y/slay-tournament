@@ -11,6 +11,8 @@ interface DoubleEliminationViewProps {
   onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
   onUpdateTournament?: (updated: Tournament) => void;
+  onAddMatch?: (roundId: string) => void;
+  onAddParticipant?: (match: Match, slot: 1 | 2) => void;
 }
 
 export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
@@ -20,6 +22,8 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
   onSelectMatch,
   onQuickWinner,
   onUpdateTournament,
+  onAddMatch,
+  onAddParticipant,
 }) => {
   const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const [activeTab, setActiveTab] = useState<'all' | 'upper' | 'lower' | 'grand_final' | string>('all');
@@ -193,6 +197,9 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                       <span className="bg-slate-800 text-slate-300 text-[11px] px-2 py-0.5 rounded font-mono">BO{round.bestOf}</span>
                       <span className="text-xs text-slate-400">• {round.matches.length} Trận</span>
                     </div>
+                    {isAdmin && onAddMatch && (
+                      <button onClick={() => onAddMatch(round.id)} className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold">+ Thêm trận</button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -205,6 +212,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                         onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
                         onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
+                          onAddParticipant={isAdmin ? onAddParticipant : undefined}
                       />
                     ))}
                   </div>
@@ -229,6 +237,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                           onOpenMatchModal={handleOpenMatchModal}
                           onQuickWinner={onQuickWinner}
                           onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
+                          onAddParticipant={isAdmin ? onAddParticipant : undefined}
                         />
                       ))}
                     </div>
@@ -287,6 +296,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                               onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
                               onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
+                          onAddParticipant={isAdmin ? onAddParticipant : undefined}
                             />
                           ))}
                         </div>
@@ -324,6 +334,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                               onOpenMatchModal={handleOpenMatchModal}
                               onQuickWinner={onQuickWinner}
                               onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
+                          onAddParticipant={isAdmin ? onAddParticipant : undefined}
                             />
                           ))}
                         </div>
@@ -358,6 +369,7 @@ export const DoubleEliminationView: React.FC<DoubleEliminationViewProps> = ({
                         onOpenMatchModal={handleOpenMatchModal}
                         onQuickWinner={onQuickWinner}
                         onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
+                          onAddParticipant={isAdmin ? onAddParticipant : undefined}
                       />
                     ))}
                   </div>

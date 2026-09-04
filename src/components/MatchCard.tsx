@@ -9,6 +9,7 @@ interface MatchCardProps {
   onOpenMatchModal: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
   onSwapMatchSlots?: (sourceMatchId: string, sourceSlot: 1 | 2, targetMatchId: string, targetSlot: 1 | 2) => void;
+  onAddParticipant?: (match: Match, slot: 1 | 2) => void;
 }
 
 export const MatchCard: React.FC<MatchCardProps> = ({
@@ -18,6 +19,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
   onOpenMatchModal,
   onQuickWinner,
   onSwapMatchSlots,
+  onAddParticipant,
 }) => {
   const [dragOverSlot, setDragOverSlot] = useState<1 | 2 | null>(null);
 
@@ -128,7 +130,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
           onDragOver={(e) => handleDragOver(e, 1)}
           onDragLeave={() => setDragOverSlot(null)}
           onDrop={(e) => handleDrop(e, 1)}
-          onClick={() => onOpenMatchModal(match)}
+            onClick={() => p1 ? onOpenMatchModal(match) : onAddParticipant?.(match, 1)}
           className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
             dragOverSlot === 1
               ? 'ring-2 ring-indigo-400 bg-indigo-900/60 scale-[1.02]'
@@ -192,7 +194,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
           onDragOver={(e) => handleDragOver(e, 2)}
           onDragLeave={() => setDragOverSlot(null)}
           onDrop={(e) => handleDrop(e, 2)}
-          onClick={() => onOpenMatchModal(match)}
+          onClick={() => p2 ? onOpenMatchModal(match) : onAddParticipant?.(match, 2)}
           className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
             dragOverSlot === 2
               ? 'ring-2 ring-indigo-400 bg-indigo-900/60 scale-[1.02]'
@@ -270,7 +272,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 
         <button
           id={`btn-open-match-${match.id}`}
-          onClick={() => onOpenMatchModal(match)}
+            onClick={() => p1 ? onOpenMatchModal(match) : onAddParticipant?.(match, 1)}
           className={`hover:underline font-medium text-[11px] ${
             isBye ? 'text-purple-400 hover:text-purple-300' : 'text-indigo-400 hover:text-indigo-300'
           }`}

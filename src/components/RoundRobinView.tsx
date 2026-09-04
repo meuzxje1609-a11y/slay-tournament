@@ -11,6 +11,8 @@ interface RoundRobinViewProps {
   onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
   onSwapMatchSlots?: (sourceMatchId: string, sourceSlot: 1 | 2, targetMatchId: string, targetSlot: 1 | 2) => void;
+  onAddMatch?: (roundId: string) => void;
+  onAddParticipant?: (match: Match, slot: 1 | 2) => void;
 }
 
 export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
@@ -20,6 +22,8 @@ export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
   onSelectMatch,
   onQuickWinner,
   onSwapMatchSlots,
+  onAddMatch,
+  onAddParticipant,
 }) => {
   const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const standings = calculateRoundRobinStandings(tournament.participants, tournament.rounds);
@@ -161,6 +165,7 @@ export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
                 <span className="text-xs text-slate-500 font-mono">
                   BO{round.bestOf}
                 </span>
+                {isAdmin && onAddMatch && <button onClick={() => onAddMatch(round.id)} className="ml-auto px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold">+ Thêm trận</button>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -173,6 +178,7 @@ export const RoundRobinView: React.FC<RoundRobinViewProps> = ({
                     onOpenMatchModal={handleOpenMatchModal}
                     onQuickWinner={onQuickWinner}
                     onSwapMatchSlots={onSwapMatchSlots}
+                    onAddParticipant={isAdmin ? onAddParticipant : undefined}
                   />
                 ))}
               </div>

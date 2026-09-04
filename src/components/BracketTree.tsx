@@ -27,6 +27,7 @@ interface BracketTreeProps {
   onSelectMatch?: (match: Match) => void;
   onQuickWinner?: (match: Match, winnerId: string) => void;
   onUpdateTournament?: (updated: Tournament) => void;
+  onAddMatch?: (roundId: string) => void;
 }
 
 export const BracketTree: React.FC<BracketTreeProps> = ({
@@ -36,6 +37,7 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
   onSelectMatch,
   onQuickWinner,
   onUpdateTournament,
+  onAddMatch,
 }) => {
   const handleOpenMatchModal = onOpenMatchModal || onSelectMatch || (() => {});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -328,6 +330,12 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
 
                   <div className="flex items-center gap-3 text-xs text-slate-400">
                     <button
+                      onClick={() => onAddMatch?.(selectedRound.id)}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/40 rounded-lg flex items-center gap-1 font-semibold text-xs transition-colors"
+                    >
+                      + Thêm trận
+                    </button>
+                    <button
                       onClick={() => handleDownloadRound(`round-grid-section-${selectedRound.id}`, selectedRound.name)}
                       disabled={exportingRoundId === `round-grid-section-${selectedRound.id}`}
                       className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 rounded-lg flex items-center gap-1 font-semibold text-xs transition-colors"
@@ -369,6 +377,7 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                           onOpenMatchModal={handleOpenMatchModal}
                           onQuickWinner={onQuickWinner}
                           onSwapMatchSlots={isAdmin && onUpdateTournament ? handleSwapMatchSlots : undefined}
+                          onAddParticipant={isAdmin ? (match, slot) => handleOpenMatchModal(match) : undefined}
                         />
                       ))}
                     </div>
@@ -457,6 +466,14 @@ export const BracketTree: React.FC<BracketTreeProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2.5 text-xs text-slate-400">
+                          {isAdmin && onAddMatch && (
+                            <button
+                              onClick={() => onAddMatch(round.id)}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/40 rounded-lg font-semibold text-xs"
+                            >
+                              + Thêm trận
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDownloadRound(`round-grid-section-${round.id}`, round.name)}
                             disabled={exportingRoundId === `round-grid-section-${round.id}`}

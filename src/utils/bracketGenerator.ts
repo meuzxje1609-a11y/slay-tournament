@@ -929,9 +929,11 @@ function advanceMatchSingleInternal(
   if (mapPicked !== undefined) currentMatch.mapPicked = mapPicked;
   if (mvp !== undefined) currentMatch.mvp = mvp;
 
-  // Advance winner to next match in winners / bracket flow
+  const manualBracket = true;
   let winnerAdvanced = false;
-  if (currentMatch.nextMatchId) {
+
+  // Manual brackets keep every later round exactly as entered by the administrator.
+  if (!manualBracket && currentMatch.nextMatchId) {
     for (const round of newRounds) {
       const nextMatch = round.matches.find((m) => m.id === currentMatch!.nextMatchId);
       if (nextMatch) {
@@ -959,7 +961,7 @@ function advanceMatchSingleInternal(
   }
 
   // Fallback if nextMatchId was not found or not set
-  if (!winnerAdvanced && currentRoundIndex >= 0 && currentRoundIndex < newRounds.length - 1 && currentMatch.bracketSection === 'winners') {
+  if (!manualBracket && !winnerAdvanced && currentRoundIndex >= 0 && currentRoundIndex < newRounds.length - 1 && currentMatch.bracketSection === 'winners') {
     const nextRound = newRounds[currentRoundIndex + 1];
     if (nextRound && nextRound.matches) {
       const targetMatchIndex = Math.floor(currentMatch.matchIndex / 2);
@@ -984,7 +986,7 @@ function advanceMatchSingleInternal(
   }
 
   // Advance loser in Double Elimination if applicable
-  if (tournament.format === 'double_elimination' && currentMatch.bracketSection === 'winners') {
+  if (!manualBracket && tournament.format === 'double_elimination' && currentMatch.bracketSection === 'winners') {
     const targetRoundIdx = currentRoundIndex === 0 ? 0 : 2 * currentRoundIndex - 1;
     const lbRound = newRounds.find((r) => r.bracketSection === 'losers' && r.roundIndex === targetRoundIdx);
     if (lbRound) {
@@ -1013,11 +1015,8 @@ function advanceMatchSingleInternal(
     }
   }
 
-  // Rebuild all winner-bracket dependencies so changing or resetting a
-  // completed result removes stale participants from later rounds.
-  if (tournament.format === 'single_elimination') {
-    reconcileSingleEliminationRounds(newRounds, matchId);
-  }
+  // In manual bracket mode, later-round slots are never inferred from results.
+  // Keep every pairing exactly as entered by the administrator.
 
   // Check for Tournament Champion
   let championId = tournament.championId;
@@ -1087,7 +1086,8 @@ export function swapBracketMatchSlots(
     }
   }
 
-  // Swap the participant IDs
+  // Move into an empty slot; preserve swap behavior when both slots are occupied.
+  // Manual mode never recalculates BYEs or fills later rounds.
   const sourcePId = sourceSlot === 1 ? sourceMatch.participant1Id : sourceMatch.participant2Id;
   const targetPId = targetSlot === 1 ? targetMatch.participant1Id : targetMatch.participant2Id;
 
@@ -1097,79 +1097,14 @@ export function swapBracketMatchSlots(
   if (targetSlot === 1) targetMatch.participant1Id = sourcePId;
   else targetMatch.participant2Id = sourcePId;
 
-  // Recompute Round 0 BYE statuses and forward propagation to Round 1
-  const r0Matches = rounds[0]?.matches || [];
-  for (let m = 0; m < r0Matches.length; m++) {
-    const match = r0Matches[m];
-    const p1 = match.participant1Id;
-    const p2 = match.participant2Id;
-
-    if (p1 && !p2) {
-      match.status = 'finished';
-      match.winnerId = p1;
-      match.score1 = 0;
-      match.score2 = 0;
-      match.notes = 'Đặc cách vào vòng sau (BYE)';
-      if (match.nextMatchId && rounds[1]) {
-        const nextMatch = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
-        if (nextMatch) {
-          if (match.nextMatchSlot === 1) nextMatch.participant1Id = p1;
-          else nextMatch.participant2Id = p1;
-        }
-      }
-    } else if (!p1 && p2) {
-      match.status = 'finished';
-      match.winnerId = p2;
-      match.score1 = 0;
-      match.score2 = 0;
-      match.notes = 'Đặc cách vào vòng sau (BYE)';
-      if (match.nextMatchId && rounds[1]) {
-        const nextMatch = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
-        if (nextMatch) {
-          if (match.nextMatchSlot === 1) nextMatch.participant1Id = p2;
-          else nextMatch.participant2Id = p2;
-        }
-      }
-    } else if (p1 && p2) {
-      // Both participants present
-      if (match.notes?.includes('BYE')) {
-        match.status = 'ready';
-        match.winnerId = undefined;
-        match.notes = undefined;
-        // Clean next match if it had auto-advanced
-        if (match.nextMatchId && rounds[1]) {
-          const nextMatch = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
-          if (nextMatch) {
-            if (match.nextMatchSlot === 1) nextMatch.participant1Id = undefined;
-            else nextMatch.participant2Id = undefined;
-          }
-        }
-      } else if (match.status === 'finished') {
-        // Keep finished match if already played
-      } else {
-        match.status = 'ready';
-      }
-    } else {
-      match.status = 'pending';
-      match.winnerId = undefined;
-      match.notes = undefined;
-    }
+  // Recompute readiness only for the two affected matches. Existing results
+  // were cleared above, and downstream rounds remain entirely admin-owned.
+  for (const match of [sourceMatch, targetMatch]) {
+    match.status = match.participant1Id && match.participant2Id ? 'ready' : 'pending';
   }
 
-  // Update Round 1 readiness
-  if (rounds.length > 1) {
-    rounds[1].matches.forEach((m) => {
-      if (m.participant1Id && m.participant2Id) {
-        if (m.status === 'pending') m.status = 'ready';
-      }
-    });
-  }
-
-  // Rebuild the complete single-elimination dependency chain after a manual
-  // move. This also removes stale IDs from quarter/semi/final slots.
-  if (tournament.format === 'single_elimination') {
-    reconcileSingleEliminationRounds(rounds);
-  }
+  // Manual mode: never reconcile or auto-fill downstream rounds. The admin
+  // owns every slot, including slots in quarter-finals and later rounds.
 
   let divisions = tournament.divisions;
   if (divisions && divisionIndex >= 0) {

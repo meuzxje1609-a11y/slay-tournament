@@ -38,6 +38,8 @@ interface MatchModalProps {
       scheduledTime?: string;
     }
   ) => void;
+  onAssignParticipant?: (matchId: string, slot: 1 | 2, participantId?: string) => void;
+  onCreateParticipant?: (matchId: string, slot: 1 | 2, name: string, discordTag?: string) => void;
 }
 
 export const MatchModal: React.FC<MatchModalProps> = ({
@@ -47,6 +49,8 @@ export const MatchModal: React.FC<MatchModalProps> = ({
   onOpenLogin,
   onClose,
   onSaveMatch,
+  onAssignParticipant,
+  onCreateParticipant,
 }) => {
   const [score1, setScore1] = useState<number>(0);
   const [score2, setScore2] = useState<number>(0);
@@ -58,6 +62,8 @@ export const MatchModal: React.FC<MatchModalProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [streamUrl, setStreamUrl] = useState<string>('');
   const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [newParticipantName, setNewParticipantName] = useState('');
+  const [newParticipantDiscord, setNewParticipantDiscord] = useState('');
 
   useEffect(() => {
     setScore1(match?.score1 ?? 0);
@@ -253,6 +259,33 @@ export const MatchModal: React.FC<MatchModalProps> = ({
                   <Lock className="w-3.5 h-3.5" /> Đăng nhập Admin
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Manual participant assignment */}
+          {isAdmin && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[1, 2].map((slot) => {
+                const currentId = slot === 1 ? match.participant1Id : match.participant2Id;
+                return (
+                  <label key={slot} className="text-xs text-slate-400 space-y-1">
+                    Tuyển thủ {slot}
+                    <select
+                      value={currentId || ''}
+                      onChange={(e) => onAssignParticipant?.(match.id, slot as 1 | 2, e.target.value || undefined)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                    >
+                      <option value="">TBD (Chưa chọn)</option>
+                      {tournament.participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    <input value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} placeholder="Tên tuyển thủ mới" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-white" />
+                    <input value={newParticipantDiscord} onChange={(e) => setNewParticipantDiscord(e.target.value)} placeholder="Discord (không bắt buộc)" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-white" />
+                    <button type="button" onClick={() => { const name = newParticipantName.trim(); if (!name) return; onCreateParticipant?.(match.id, slot as 1 | 2, name, newParticipantDiscord.trim() || undefined); setNewParticipantName(''); setNewParticipantDiscord(''); }} className="mt-1 w-full px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">
+                      + Tạo tuyển thủ mới vào slot {slot}
+                    </button>
+                  </label>
+                );
+              })}
             </div>
           )}
 
