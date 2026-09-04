@@ -987,7 +987,7 @@ export default function App() {
                     onSelectMatch={(m) => setSelectedMatch(m)}
                     onSwapMatchSlots={(sourceMatchId, sourceSlot, targetMatchId, targetSlot) => {
                       const updated = swapBracketMatchSlots(
-                        activeTournament,
+                        currentViewTournament,
                         sourceMatchId,
                         sourceSlot,
                         targetMatchId,

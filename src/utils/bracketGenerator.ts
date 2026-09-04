@@ -753,6 +753,79 @@ export function generateRoundsForDivision(
   }
 }
 
+function reconcileSingleEliminationRounds(rounds: Round[], preserveMatchId?: string): void {
+  const playableRounds = rounds.filter((r) => r.bracketSection === 'winners');
+  if (playableRounds.length < 2) return;
+
+  // Downstream participant IDs are derived data. Rebuild them from the
+  // opening round and the winners that are still valid for each match.
+  for (let i = 1; i < playableRounds.length; i++) {
+    for (const match of playableRounds[i].matches) {
+      if (match.id !== preserveMatchId) {
+        match.participant1Id = undefined;
+        match.participant2Id = undefined;
+        match.winnerId = undefined;
+        match.loserId = undefined;
+        match.score1 = 0;
+        match.score2 = 0;
+        match.games = undefined;
+        match.status = 'pending';
+      }
+      if (match.notes?.includes('BYE')) match.notes = undefined;
+    }
+  }
+
+  for (let roundIndex = 0; roundIndex < playableRounds.length; roundIndex++) {
+    const round = playableRounds[roundIndex];
+    for (const match of round.matches) {
+      const p1 = match.participant1Id;
+      const p2 = match.participant2Id;
+      const winner = match.winnerId;
+
+      if (p1 && p2 && winner && (winner === p1 || winner === p2)) {
+        match.status = 'finished';
+        match.loserId = winner === p1 ? p2 : p1;
+        if (match.nextMatchId) {
+          const next = playableRounds.flatMap((r) => r.matches).find((m) => m.id === match.nextMatchId);
+          if (next) {
+            if (match.nextMatchSlot === 1) next.participant1Id = winner;
+            else next.participant2Id = winner;
+          }
+        }
+      } else if (p1 && !p2) {
+        match.status = 'finished';
+        match.winnerId = p1;
+        match.loserId = undefined;
+        match.notes = 'Đặc cách vào vòng sau (BYE)';
+        if (match.nextMatchId) {
+          const next = playableRounds.flatMap((r) => r.matches).find((m) => m.id === match.nextMatchId);
+          if (next) {
+            if (match.nextMatchSlot === 1) next.participant1Id = p1;
+            else next.participant2Id = p1;
+          }
+        }
+      } else if (!p1 && p2) {
+        match.status = 'finished';
+        match.winnerId = p2;
+        match.loserId = undefined;
+        match.notes = 'Đặc cách vào vòng sau (BYE)';
+        if (match.nextMatchId) {
+          const next = playableRounds.flatMap((r) => r.matches).find((m) => m.id === match.nextMatchId);
+          if (next) {
+            if (match.nextMatchSlot === 1) next.participant1Id = p2;
+            else next.participant2Id = p2;
+          }
+        }
+      } else {
+        match.winnerId = undefined;
+        match.loserId = undefined;
+        match.status = p1 && p2 ? 'ready' : 'pending';
+        if (!p1 && !p2) match.notes = undefined;
+      }
+    }
+  }
+}
+
 // Advance Match logic (supports single tournament and multi-division tournaments)
 export function advanceMatchWinner(
   tournament: Tournament,
@@ -839,13 +912,15 @@ function advanceMatchSingleInternal(
 
   if (!currentMatch) return tournament;
 
-  const validWinnerId = winnerId ? winnerId : undefined;
+  const validWinnerId = winnerId &&
+    (winnerId === currentMatch.participant1Id || winnerId === currentMatch.participant2Id)
+    ? winnerId
+    : undefined;
   const loserId = validWinnerId
     ? currentMatch.participant1Id === validWinnerId
       ? currentMatch.participant2Id
       : currentMatch.participant1Id
     : undefined;
-
   currentMatch.winnerId = validWinnerId;
   currentMatch.loserId = loserId;
   currentMatch.score1 = score1;
@@ -938,6 +1013,12 @@ function advanceMatchSingleInternal(
     }
   }
 
+  // Rebuild all winner-bracket dependencies so changing or resetting a
+  // completed result removes stale participants from later rounds.
+  if (tournament.format === 'single_elimination') {
+    reconcileSingleEliminationRounds(newRounds, matchId);
+  }
+
   // Check for Tournament Champion
   let championId = tournament.championId;
   let runnerUpId = tournament.runnerUpId;
@@ -970,7 +1051,11 @@ export function swapBracketMatchSlots(
   targetMatchId: string,
   targetSlot: 1 | 2
 ): Tournament {
-  const rounds = JSON.parse(JSON.stringify(tournament.rounds)) as Round[];
+  const divisionIndex = tournament.divisions?.findIndex((d) =>
+    d.rounds.some((r) => r.matches.some((m) => m.id === sourceMatchId || m.id === targetMatchId))
+  ) ?? -1;
+  const sourceRounds = divisionIndex >= 0 ? tournament.divisions![divisionIndex].rounds : tournament.rounds;
+  const rounds = JSON.parse(JSON.stringify(sourceRounds)) as Round[];
 
   let sourceMatch: Match | undefined;
   let targetMatch: Match | undefined;
@@ -1080,17 +1165,15 @@ export function swapBracketMatchSlots(
     });
   }
 
+  // Rebuild the complete single-elimination dependency chain after a manual
+  // move. This also removes stale IDs from quarter/semi/final slots.
+  if (tournament.format === 'single_elimination') {
+    reconcileSingleEliminationRounds(rounds);
+  }
+
   let divisions = tournament.divisions;
-  if (divisions && tournament.activeDivisionId) {
-    divisions = divisions.map((d) => {
-      if (d.id === tournament.activeDivisionId) {
-        return {
-          ...d,
-          rounds,
-        };
-      }
-      return d;
-    });
+  if (divisions && divisionIndex >= 0) {
+    divisions = divisions.map((d, index) => index === divisionIndex ? { ...d, rounds } : d);
   }
 
   return {
