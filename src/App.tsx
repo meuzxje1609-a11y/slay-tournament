@@ -314,19 +314,31 @@ export default function App() {
       details.mvp
     );
 
-    // Apply supplementary match metadata
+    const validWinnerId = winnerId ? winnerId : undefined;
+
+    // Apply supplementary match metadata and ensure score & winner are explicitly pinned
     const mapMatches = (matches: Match[]) =>
       matches.map((m) => {
         if (m.id === matchId) {
+          const loserId = validWinnerId
+            ? m.participant1Id === validWinnerId
+              ? m.participant2Id
+              : m.participant1Id
+            : undefined;
+
           return {
             ...m,
+            score1: Number(score1) || 0,
+            score2: Number(score2) || 0,
+            winnerId: validWinnerId,
+            loserId: loserId,
             status: details.status,
             voiceChannel: details.voiceChannel || m.voiceChannel,
             mapPicked: details.mapPicked || m.mapPicked,
             mvp: details.mvp || m.mvp,
-            notes: details.notes || m.notes,
-            streamUrl: details.streamUrl || m.streamUrl,
-            scheduledTime: details.scheduledTime || m.scheduledTime,
+            notes: details.notes !== undefined ? details.notes : m.notes,
+            streamUrl: details.streamUrl !== undefined ? details.streamUrl : m.streamUrl,
+            scheduledTime: details.scheduledTime !== undefined ? details.scheduledTime : m.scheduledTime,
           };
         }
         return m;
@@ -334,10 +346,10 @@ export default function App() {
 
     updated = {
       ...updated,
-      rounds: updated.rounds.map((r) => ({
+      rounds: updated.rounds ? updated.rounds.map((r) => ({
         ...r,
         matches: mapMatches(r.matches),
-      })),
+      })) : [],
       divisions: updated.divisions
         ? updated.divisions.map((d) => ({
             ...d,
@@ -347,6 +359,7 @@ export default function App() {
             })),
           }))
         : undefined,
+      updatedAt: Date.now(),
     };
 
     updateTournament(updated);

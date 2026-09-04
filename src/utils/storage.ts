@@ -141,9 +141,27 @@ export async function fetchTournamentsFromAPI(): Promise<Tournament[] | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
-      const sanitized = (data as Tournament[]).map(sanitizeTournament);
-      saveTournaments(sanitized); // Sync local cache
-      return sanitized;
+      const remoteSanitized = (data as Tournament[]).map(sanitizeTournament);
+      const localList = loadTournaments();
+
+      // Merge remote with local cache: keep whichever has the newer updatedAt timestamp
+      const mergedList = remoteSanitized.map((remoteT) => {
+        const localT = localList.find((l) => l.id === remoteT.id);
+        if (!localT) return remoteT;
+        const localUpdated = localT.updatedAt || 0;
+        const remoteUpdated = remoteT.updatedAt || 0;
+        return localUpdated > remoteUpdated ? localT : remoteT;
+      });
+
+      // Keep local tournaments not present in remote
+      for (const localT of localList) {
+        if (!mergedList.some((m) => m.id === localT.id)) {
+          mergedList.push(localT);
+        }
+      }
+
+      saveTournaments(mergedList);
+      return mergedList;
     }
     return null;
   } catch (err) {
