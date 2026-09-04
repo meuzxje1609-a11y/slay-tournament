@@ -161,26 +161,33 @@ export default function App() {
   const updateTournament = (updated: Tournament) => {
     let finalUpdated = updated;
     const currentActive = tournaments.find((t) => t.id === updated.id);
-    if (currentActive && currentActive.divisions && currentActive.divisions.length > 0 && selectedDivisionId) {
-      const updatedDivisions = currentActive.divisions.map((d) => {
-        if (d.id === selectedDivisionId) {
-          return {
-            ...d,
-            rounds: updated.rounds || d.rounds,
-            participants: updated.participants || d.participants,
-            championId: updated.championId,
-            runnerUpId: updated.runnerUpId,
-            thirdPlaceId: updated.thirdPlaceId,
-            status: updated.status,
-          };
-        }
-        return d;
-      });
-      finalUpdated = {
-        ...currentActive,
-        ...updated,
-        divisions: updated.divisions || updatedDivisions,
-      };
+    if (currentActive && currentActive.divisions && currentActive.divisions.length > 0) {
+      if (updated.divisions && updated.divisions.length > 0) {
+        finalUpdated = {
+          ...currentActive,
+          ...updated,
+        };
+      } else if (selectedDivisionId) {
+        const updatedDivisions = currentActive.divisions.map((d) => {
+          if (d.id === selectedDivisionId) {
+            return {
+              ...d,
+              rounds: updated.rounds || d.rounds,
+              participants: updated.participants || d.participants,
+              championId: updated.championId,
+              runnerUpId: updated.runnerUpId,
+              thirdPlaceId: updated.thirdPlaceId,
+              status: updated.status,
+            };
+          }
+          return d;
+        });
+        finalUpdated = {
+          ...currentActive,
+          ...updated,
+          divisions: updatedDivisions,
+        };
+      }
     }
 
     const sanitizedUpdated = sanitizeTournament(finalUpdated);
@@ -937,6 +944,7 @@ export default function App() {
                 ) : currentViewTournament.format === 'round_robin' ? (
                   <RoundRobinView
                     tournament={currentViewTournament}
+                    isAdmin={isAdmin}
                     onOpenMatchModal={(m) => setSelectedMatch(m)}
                     onSelectMatch={(m) => setSelectedMatch(m)}
                   />

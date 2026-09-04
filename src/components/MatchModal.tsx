@@ -68,6 +68,69 @@ export const MatchModal: React.FC<MatchModalProps> = ({
   const gamePreset = GAME_PRESETS.find((g) => g.id === tournament.game);
   const availableMaps = gamePreset?.maps || [];
 
+  const handleScore1Change = (newScore: number) => {
+    const s1 = Math.max(0, newScore);
+    setScore1(s1);
+    if (s1 > score2 && p1) {
+      setSelectedWinnerId(p1.id);
+      if (status === 'ready' || status === 'pending') {
+        setStatus('finished');
+      }
+    } else if (score2 > s1 && p2) {
+      setSelectedWinnerId(p2.id);
+      if (status === 'ready' || status === 'pending') {
+        setStatus('finished');
+      }
+    } else if (s1 === 0 && score2 === 0) {
+      setSelectedWinnerId('');
+      if (status === 'finished') {
+        setStatus('ready');
+      }
+    }
+  };
+
+  const handleScore2Change = (newScore: number) => {
+    const s2 = Math.max(0, newScore);
+    setScore2(s2);
+    if (s2 > score1 && p2) {
+      setSelectedWinnerId(p2.id);
+      if (status === 'ready' || status === 'pending') {
+        setStatus('finished');
+      }
+    } else if (score1 > s2 && p1) {
+      setSelectedWinnerId(p1.id);
+      if (status === 'ready' || status === 'pending') {
+        setStatus('finished');
+      }
+    } else if (score1 === 0 && s2 === 0) {
+      setSelectedWinnerId('');
+      if (status === 'finished') {
+        setStatus('ready');
+      }
+    }
+  };
+
+  const handleSelectWinner = (winnerId: string) => {
+    if (selectedWinnerId === winnerId) {
+      setSelectedWinnerId('');
+      if (status === 'finished') setStatus('ready');
+    } else {
+      setSelectedWinnerId(winnerId);
+      setStatus('finished');
+      // If scores are 0-0, set default winning score based on BO
+      if (score1 === 0 && score2 === 0) {
+        const winScore = Math.ceil(match.bestOf / 2) || 1;
+        if (winnerId === p1?.id) {
+          setScore1(winScore);
+          setScore2(0);
+        } else if (winnerId === p2?.id) {
+          setScore1(0);
+          setScore2(winScore);
+        }
+      }
+    }
+  };
+
   const handleP1Win = (s1: number, s2: number) => {
     if (!p1) return;
     setScore1(s1);
@@ -84,15 +147,27 @@ export const MatchModal: React.FC<MatchModalProps> = ({
     setStatus('finished');
   };
 
+  const handleResetMatch = () => {
+    setScore1(0);
+    setScore2(0);
+    setSelectedWinnerId('');
+    setStatus(p1 && p2 ? 'ready' : 'pending');
+  };
+
   const handleSave = () => {
     let finalWinnerId = selectedWinnerId;
-    if (!finalWinnerId && (score1 !== 0 || score2 !== 0)) {
-      if (score1 > score2 && p1) finalWinnerId = p1.id;
-      else if (score2 > score1 && p2) finalWinnerId = p2.id;
+    if (score1 > score2 && p1) {
+      finalWinnerId = p1.id;
+    } else if (score2 > score1 && p2) {
+      finalWinnerId = p2.id;
+    } else if (score1 === 0 && score2 === 0 && !selectedWinnerId) {
+      finalWinnerId = '';
     }
 
+    const finalStatus = finalWinnerId ? (status === 'pending' || status === 'ready' ? 'finished' : status) : status;
+
     onSaveMatch(match.id, finalWinnerId, score1, score2, {
-      status,
+      status: finalStatus,
       voiceChannel,
       mapPicked,
       mvp,
@@ -117,7 +192,7 @@ export const MatchModal: React.FC<MatchModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                {isAdmin ? 'Điều Khiển Trận Đấu' : 'Chi Tiết Trận Đấu'} (BO{match.bestOf})
+                {isAdmin ? 'Điều Khiển & Nhập Kết Quả Trận Đấu' : 'Chi Tiết Trận Đấu'} (BO{match.bestOf})
                 {!isAdmin && (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">
                     Chế độ xem
@@ -126,7 +201,7 @@ export const MatchModal: React.FC<MatchModalProps> = ({
               </h3>
               <p className="text-xs text-slate-400">
                 {isAdmin
-                  ? 'Cập nhật tỉ số, bản đồ & kết quả cho Discord'
+                  ? 'Cập nhật tỉ số, người thắng, bản đồ & thông tin trận đấu'
                   : 'Xem thông tin cặp đấu, bản đồ và kết quả thi đấu'}
               </p>
             </div>
@@ -143,20 +218,26 @@ export const MatchModal: React.FC<MatchModalProps> = ({
         <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
           {/* Guest notification banner */}
           {!isAdmin && (
-            <div className="p-3 rounded-2xl bg-indigo-950/50 border border-indigo-500/30 text-xs text-slate-300 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>Bạn đang ở chế độ xem. Chỉ Admin mới có quyền cập nhật kết quả.</span>
+            <div className="p-4 rounded-2xl bg-indigo-950/70 border border-indigo-500/40 text-xs text-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 shrink-0">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-white text-sm">Chế độ người xem (Khách)</p>
+                  <p className="text-slate-300 text-xs">Bạn đang ở chế độ chỉ đọc. Đăng nhập Admin để có quyền nhập tỉ số và cập nhật kết quả.</p>
+                </div>
               </div>
               {onOpenLogin && (
                 <button
+                  id="btn-modal-open-login"
                   onClick={() => {
                     onClose();
                     onOpenLogin();
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] shrink-0 transition-colors"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shrink-0 transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5"
                 >
-                  Đăng nhập
+                  <Lock className="w-3.5 h-3.5" /> Đăng nhập Admin
                 </button>
               )}
             </div>
@@ -166,7 +247,12 @@ export const MatchModal: React.FC<MatchModalProps> = ({
           <div className="bg-slate-950/90 rounded-2xl p-5 border border-slate-800/80">
             <div className="grid grid-cols-11 items-center gap-2 text-center">
               {/* Participant 1 */}
-              <div className="col-span-4 flex flex-col items-center">
+              <div
+                onClick={() => isAdmin && p1 && handleSelectWinner(p1.id)}
+                className={`col-span-4 flex flex-col items-center p-2.5 rounded-xl transition-all ${
+                  isAdmin && p1 ? 'cursor-pointer hover:bg-slate-900/90 border border-transparent hover:border-slate-700' : ''
+                } ${selectedWinnerId === p1?.id ? 'bg-indigo-950/50 border !border-indigo-500/50' : ''}`}
+              >
                 <span className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 font-mono text-xs font-bold text-slate-300 flex items-center justify-center mb-1">
                   #{p1?.seed || '?'}
                 </span>
@@ -178,10 +264,16 @@ export const MatchModal: React.FC<MatchModalProps> = ({
                     {p1.discordTag}
                   </span>
                 )}
-                {selectedWinnerId === p1?.id && (
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded-full">
+                {selectedWinnerId === p1?.id ? (
+                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2.5 py-0.5 rounded-full animate-in fade-in">
                     <Trophy className="w-3 h-3" /> Người Thắng
                   </span>
+                ) : (
+                  isAdmin && p1 && (
+                    <span className="mt-2 inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                      Nhấp chọn thắng
+                    </span>
+                  )
                 )}
               </div>
 
@@ -189,15 +281,15 @@ export const MatchModal: React.FC<MatchModalProps> = ({
               <div className="col-span-3 flex flex-col items-center justify-center">
                 <span className="text-xs font-bold text-slate-500 uppercase mb-1">Tỉ số</span>
                 {isAdmin ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <input
                       id="input-match-score1"
                       type="number"
                       min="0"
                       max="10"
                       value={score1}
-                      onChange={(e) => setScore1(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-12 h-12 text-center text-xl font-mono font-extrabold bg-slate-900 border-2 border-indigo-500/50 focus:border-indigo-400 rounded-xl text-white outline-none"
+                      onChange={(e) => handleScore1Change(parseInt(e.target.value) || 0)}
+                      className="w-11 sm:w-12 h-11 sm:h-12 text-center text-lg sm:text-xl font-mono font-extrabold bg-slate-900 border-2 border-indigo-500/50 focus:border-indigo-400 rounded-xl text-white outline-none"
                     />
                     <span className="text-slate-600 font-bold text-lg">-</span>
                     <input
@@ -206,8 +298,8 @@ export const MatchModal: React.FC<MatchModalProps> = ({
                       min="0"
                       max="10"
                       value={score2}
-                      onChange={(e) => setScore2(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-12 h-12 text-center text-xl font-mono font-extrabold bg-slate-900 border-2 border-indigo-500/50 focus:border-indigo-400 rounded-xl text-white outline-none"
+                      onChange={(e) => handleScore2Change(parseInt(e.target.value) || 0)}
+                      className="w-11 sm:w-12 h-11 sm:h-12 text-center text-lg sm:text-xl font-mono font-extrabold bg-slate-900 border-2 border-indigo-500/50 focus:border-indigo-400 rounded-xl text-white outline-none"
                     />
                   </div>
                 ) : (
@@ -227,7 +319,12 @@ export const MatchModal: React.FC<MatchModalProps> = ({
               </div>
 
               {/* Participant 2 */}
-              <div className="col-span-4 flex flex-col items-center">
+              <div
+                onClick={() => isAdmin && p2 && handleSelectWinner(p2.id)}
+                className={`col-span-4 flex flex-col items-center p-2.5 rounded-xl transition-all ${
+                  isAdmin && p2 ? 'cursor-pointer hover:bg-slate-900/90 border border-transparent hover:border-slate-700' : ''
+                } ${selectedWinnerId === p2?.id ? 'bg-indigo-950/50 border !border-indigo-500/50' : ''}`}
+              >
                 <span className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 font-mono text-xs font-bold text-slate-300 flex items-center justify-center mb-1">
                   #{p2?.seed || '?'}
                 </span>
@@ -239,10 +336,16 @@ export const MatchModal: React.FC<MatchModalProps> = ({
                     {p2.discordTag}
                   </span>
                 )}
-                {selectedWinnerId === p2?.id && (
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded-full">
+                {selectedWinnerId === p2?.id ? (
+                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800 px-2.5 py-0.5 rounded-full animate-in fade-in">
                     <Trophy className="w-3 h-3" /> Người Thắng
                   </span>
+                ) : (
+                  isAdmin && p2 && (
+                    <span className="mt-2 inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                      Nhấp chọn thắng
+                    </span>
+                  )
                 )}
               </div>
             </div>
@@ -337,6 +440,13 @@ export const MatchModal: React.FC<MatchModalProps> = ({
                     </button>
                   </>
                 )}
+                <button
+                  onClick={handleResetMatch}
+                  className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-xs font-medium rounded-lg text-rose-300 transition-colors"
+                  title="Đặt lại tỉ số và huỷ người thắng"
+                >
+                  🔄 Đặt lại (Reset)
+                </button>
               </div>
             )}
           </div>

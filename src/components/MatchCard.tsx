@@ -263,7 +263,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         ) : match.scheduledTime ? (
           <span className="text-[10px] text-slate-400 truncate">⏰ {match.scheduledTime}</span>
         ) : (
-          <span className="text-[10px] text-slate-500">Nhấp để chỉnh tỉ số</span>
+          <span className="text-[10px] text-slate-500">
+            {isAdmin ? 'Nhấp để chỉnh tỉ số' : 'Nhấp xem chi tiết'}
+          </span>
         )}
 
         <button
@@ -273,7 +275,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             isBye ? 'text-purple-400 hover:text-purple-300' : 'text-indigo-400 hover:text-indigo-300'
           }`}
         >
-          {isBye ? 'Chi tiết' : isFinished ? 'Sửa điểm' : 'Nhập điểm ➔'}
+          {isBye ? 'Chi tiết' : isAdmin ? (isFinished ? 'Sửa điểm' : 'Nhập điểm ➔') : 'Xem chi tiết'}
         </button>
       </div>
     </div>

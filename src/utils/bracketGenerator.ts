@@ -232,27 +232,30 @@ export function generateSingleElimination(
   return rounds;
 }
 
-// Generate Double Elimination Bracket
+// Generate Double Elimination Bracket with Progressive Round Pairing (Max matches, max 1 BYE if odd)
 export function generateDoubleElimination(
   participants: Participant[],
   settings: Tournament['settings']
 ): Round[] {
   const count = participants.length;
-  if (count < 4) return generateSingleElimination(participants, settings);
+  if (count < 2) return [];
+  if (count === 2) return generateSingleElimination(participants, settings);
 
-  const bracketSize = getStandardBracketSize(count);
-  const numRoundsUpper = Math.log2(bracketSize);
-  const seedOrder = generateSeededOrder(bracketSize);
+  // Progressive match counts for Winners Bracket (WB)
+  let currentCount = count;
+  const wbMatchCounts: number[] = [];
+  while (currentCount > 1) {
+    const matches = Math.ceil(currentCount / 2);
+    wbMatchCounts.push(matches);
+    currentCount = matches;
+  }
 
-  const seededParticipants = seedOrder.map((seed) => {
-    return participants.find((p) => p.seed === seed) || null;
-  });
-
+  const numRoundsUpper = wbMatchCounts.length;
   const rounds: Round[] = [];
 
   // Upper Bracket Rounds (WB)
   for (let r = 0; r < numRoundsUpper; r++) {
-    const matchesInRound = bracketSize / Math.pow(2, r + 1);
+    const matchesInRound = wbMatchCounts[r];
     const roundBestOf = getBestOfForRound(r, numRoundsUpper, settings, 'winners');
     const roundMatches: Match[] = [];
 
@@ -278,7 +281,7 @@ export function generateDoubleElimination(
 
     rounds.push({
       id: `wb-round-${r}`,
-      name: `Nhánh Thắng (WB) - ${getRoundName(r, numRoundsUpper, 'winners')}`,
+      name: numRoundsUpper === 1 ? 'Nhánh Thắng (WB) - Chung Kết' : `Nhánh Thắng (WB) - ${getRoundName(r, numRoundsUpper, 'winners')}`,
       bracketSection: 'winners',
       roundIndex: r,
       bestOf: roundBestOf,
@@ -286,56 +289,123 @@ export function generateDoubleElimination(
     });
   }
 
-  // Populate Round 0 WB
+  // Populate Round 0 WB:
+  // If count is odd: exactly 1 participant gets BYE at match 0 (Seed 1 / Bàn 1), remaining participants are paired into matches 1, 2, ...
+  // If count is even: all participants are paired into matches 0, 1, ... (0 BYEs)
   const wb0Matches = rounds[0].matches;
-  for (let m = 0; m < wb0Matches.length; m++) {
-    const p1 = seededParticipants[m * 2];
-    const p2 = seededParticipants[m * 2 + 1];
+  const isOdd = count % 2 !== 0;
 
-    wb0Matches[m].participant1Id = p1 ? p1.id : undefined;
-    wb0Matches[m].participant2Id = p2 ? p2.id : undefined;
+  if (isOdd) {
+    const p1 = participants[0] || null;
+    wb0Matches[0].participant1Id = p1 ? p1.id : undefined;
+    wb0Matches[0].participant2Id = undefined;
 
-    if (p1 && !p2) {
-      wb0Matches[m].status = 'finished';
-      wb0Matches[m].winnerId = p1.id;
-      wb0Matches[m].score1 = 0;
-      wb0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
-      if (wb0Matches[m].nextMatchId && rounds[1]) {
-        const next = rounds[1].matches.find(mt => mt.id === wb0Matches[m].nextMatchId);
-        if (next) {
-          if (wb0Matches[m].nextMatchSlot === 1) next.participant1Id = p1.id;
-          else next.participant2Id = p1.id;
-        }
-      }
-    } else if (!p1 && p2) {
-      wb0Matches[m].status = 'finished';
-      wb0Matches[m].winnerId = p2.id;
-      wb0Matches[m].score2 = 0;
-      wb0Matches[m].notes = 'Đặc cách vào vòng sau (BYE)';
-      if (wb0Matches[m].nextMatchId && rounds[1]) {
-        const next = rounds[1].matches.find(mt => mt.id === wb0Matches[m].nextMatchId);
-        if (next) {
-          if (wb0Matches[m].nextMatchSlot === 1) next.participant1Id = p2.id;
-          else next.participant2Id = p2.id;
-        }
-      }
-    } else if (p1 && p2) {
-      wb0Matches[m].status = 'ready';
+    const remaining = participants.slice(1);
+    for (let m = 1; m < wb0Matches.length; m++) {
+      const pA = remaining[(m - 1) * 2];
+      const pB = remaining[(m - 1) * 2 + 1];
+      wb0Matches[m].participant1Id = pA ? pA.id : undefined;
+      wb0Matches[m].participant2Id = pB ? pB.id : undefined;
+    }
+  } else {
+    for (let m = 0; m < wb0Matches.length; m++) {
+      const pA = participants[m * 2];
+      const pB = participants[m * 2 + 1];
+      wb0Matches[m].participant1Id = pA ? pA.id : undefined;
+      wb0Matches[m].participant2Id = pB ? pB.id : undefined;
     }
   }
 
+  // Process BYEs and initial statuses for WB Round 0
+  for (let m = 0; m < wb0Matches.length; m++) {
+    const match = wb0Matches[m];
+    const p1Id = match.participant1Id;
+    const p2Id = match.participant2Id;
+
+    if (p1Id && !p2Id) {
+      match.status = 'finished';
+      match.winnerId = p1Id;
+      match.score1 = 0;
+      match.score2 = 0;
+      match.notes = 'Đặc cách vào vòng sau (BYE)';
+      if (match.nextMatchId && rounds[1]) {
+        const next = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
+        if (next) {
+          if (match.nextMatchSlot === 1) next.participant1Id = p1Id;
+          else next.participant2Id = p1Id;
+        }
+      }
+    } else if (!p1Id && p2Id) {
+      match.status = 'finished';
+      match.winnerId = p2Id;
+      match.score1 = 0;
+      match.score2 = 0;
+      match.notes = 'Đặc cách vào vòng sau (BYE)';
+      if (match.nextMatchId && rounds[1]) {
+        const next = rounds[1].matches.find((mt) => mt.id === match.nextMatchId);
+        if (next) {
+          if (match.nextMatchSlot === 1) next.participant1Id = p2Id;
+          else next.participant2Id = p2Id;
+        }
+      }
+    } else if (p1Id && p2Id) {
+      match.status = 'ready';
+    }
+  }
+
+  // Check WB Round 1 readiness
+  if (rounds.length > 1) {
+    rounds[1].matches.forEach((m) => {
+      if (m.participant1Id && m.participant2Id) {
+        m.status = 'ready';
+      }
+    });
+  }
+
   // Lower Bracket Rounds (LB)
-  const numRoundsLower = (numRoundsUpper - 1) * 2;
+  const numRoundsLower = Math.max(1, (numRoundsUpper - 1) * 2);
+  const playedMatchesInWb0 = isOdd ? wbMatchCounts[0] - 1 : wbMatchCounts[0];
+
+  // Calculate LB match counts for each round
+  const lbMatchCounts: number[] = [];
   for (let lr = 0; lr < numRoundsLower; lr++) {
-    const matchesInRound = Math.max(1, Math.floor(bracketSize / Math.pow(2, Math.floor(lr / 2) + 2)));
+    if (lr === 0) {
+      lbMatchCounts.push(Math.max(1, Math.ceil(playedMatchesInWb0 / 2)));
+    } else if (lr % 2 === 1) {
+      const wbRoundIdx = Math.floor((lr + 1) / 2);
+      const incomingWbMatches = wbMatchCounts[wbRoundIdx] || 1;
+      lbMatchCounts.push(Math.max(1, incomingWbMatches));
+    } else {
+      lbMatchCounts.push(Math.max(1, Math.ceil(lbMatchCounts[lr - 1] / 2)));
+    }
+  }
+
+  for (let lr = 0; lr < numRoundsLower; lr++) {
+    const matchesInRound = lbMatchCounts[lr];
     const roundMatches: Match[] = [];
 
     for (let lm = 0; lm < matchesInRound; lm++) {
       const matchId = `lb-r${lr}-m${lm}`;
-      const nextMatchId = lr < numRoundsLower - 1 
-        ? (lr % 2 === 0 ? `lb-r${lr + 1}-m${lm}` : `lb-r${lr + 1}-m${Math.floor(lm / 2)}`) 
-        : 'grand-final-m0';
-      const nextMatchSlot = (lr === numRoundsLower - 1 ? 2 : (lr % 2 === 0 ? 1 : (lm % 2 === 0 ? 1 : 2))) as 1 | 2;
+      let nextMatchId: string;
+      let nextMatchSlot: 1 | 2;
+
+      if (lr < numRoundsLower - 1) {
+        if (lr % 2 === 0) {
+          // Even round to odd round: winner takes slot 1 in next LB round (slot 2 is for incoming WB losers)
+          const targetMatchCount = lbMatchCounts[lr + 1] || 1;
+          const targetIndex = Math.min(lm, targetMatchCount - 1);
+          nextMatchId = `lb-r${lr + 1}-m${targetIndex}`;
+          nextMatchSlot = 1;
+        } else {
+          // Odd round to even round: winners pair up into next LB round
+          nextMatchId = `lb-r${lr + 1}-m${Math.floor(lm / 2)}`;
+          nextMatchSlot = (lm % 2 === 0 ? 1 : 2) as 1 | 2;
+        }
+      } else {
+        // Last LB round -> Grand Finals Slot 2
+        nextMatchId = 'grand-final-m0';
+        nextMatchSlot = 2;
+      }
 
       roundMatches.push({
         id: matchId,
@@ -696,21 +766,11 @@ export function advanceMatchWinner(
   // If tournament has divisions, find which division owns this match
   if (tournament.divisions && tournament.divisions.length > 0) {
     let targetDivIndex = -1;
-    let divMatchFound = false;
 
-    // Check active division first, then others
-    const activeIdx = tournament.divisions.findIndex(d => d.id === tournament.activeDivisionId);
-    if (activeIdx !== -1) {
-      const existsInActive = tournament.divisions[activeIdx].rounds.some(r => r.matches.some(m => m.id === matchId));
-      if (existsInActive) {
-        targetDivIndex = activeIdx;
-        divMatchFound = true;
-      }
-    }
-
-    if (!divMatchFound) {
-      targetDivIndex = tournament.divisions.findIndex(d => d.rounds.some(r => r.matches.some(m => m.id === matchId)));
-    }
+    // Search in divisions
+    targetDivIndex = tournament.divisions.findIndex((d) =>
+      d.rounds.some((r) => r.matches.some((m) => m.id === matchId))
+    );
 
     if (targetDivIndex !== -1) {
       const targetDiv = tournament.divisions[targetDivIndex];
@@ -722,28 +782,30 @@ export function advanceMatchWinner(
         participants: targetDiv.participants,
         championId: targetDiv.championId,
         runnerUpId: targetDiv.runnerUpId,
+        status: targetDiv.status || tournament.status,
       };
 
       const advancedTemp = advanceMatchSingleInternal(tempTour, matchId, winnerId, score1, score2, mapPicked, mvp);
 
-      const updatedDivisions = [...tournament.divisions];
-      updatedDivisions[targetDivIndex] = {
-        ...targetDiv,
-        rounds: advancedTemp.rounds,
-        championId: advancedTemp.championId,
-        runnerUpId: advancedTemp.runnerUpId,
-        status: advancedTemp.status,
-      };
-
-      const isCurrentActive = tournament.activeDivisionId === targetDiv.id || !tournament.activeDivisionId;
+      const updatedDivisions = tournament.divisions.map((d, idx) => {
+        if (idx === targetDivIndex) {
+          return {
+            ...d,
+            rounds: advancedTemp.rounds,
+            championId: advancedTemp.championId,
+            runnerUpId: advancedTemp.runnerUpId,
+            status: advancedTemp.status,
+          };
+        }
+        return d;
+      });
 
       return {
         ...tournament,
         divisions: updatedDivisions,
-        rounds: isCurrentActive ? advancedTemp.rounds : tournament.rounds,
-        participants: isCurrentActive ? advancedTemp.participants : tournament.participants,
-        championId: isCurrentActive ? advancedTemp.championId : tournament.championId,
-        runnerUpId: isCurrentActive ? advancedTemp.runnerUpId : tournament.runnerUpId,
+        rounds: advancedTemp.rounds,
+        championId: advancedTemp.championId || tournament.championId,
+        runnerUpId: advancedTemp.runnerUpId || tournament.runnerUpId,
         updatedAt: Date.now(),
       };
     }
@@ -767,7 +829,7 @@ function advanceMatchSingleInternal(
   let currentRoundIndex = -1;
 
   for (let r = 0; r < newRounds.length; r++) {
-    const found = newRounds[r].matches.find(m => m.id === matchId);
+    const found = newRounds[r].matches.find((m) => m.id === matchId);
     if (found) {
       currentMatch = found;
       currentRoundIndex = r;
@@ -777,30 +839,42 @@ function advanceMatchSingleInternal(
 
   if (!currentMatch) return tournament;
 
-  const loserId = currentMatch.participant1Id === winnerId 
-    ? currentMatch.participant2Id 
-    : currentMatch.participant1Id;
+  const validWinnerId = winnerId ? winnerId : undefined;
+  const loserId = validWinnerId
+    ? currentMatch.participant1Id === validWinnerId
+      ? currentMatch.participant2Id
+      : currentMatch.participant1Id
+    : undefined;
 
-  currentMatch.winnerId = winnerId;
+  currentMatch.winnerId = validWinnerId;
   currentMatch.loserId = loserId;
   currentMatch.score1 = score1;
   currentMatch.score2 = score2;
-  currentMatch.status = 'finished';
-  if (mapPicked) currentMatch.mapPicked = mapPicked;
-  if (mvp) currentMatch.mvp = mvp;
+  currentMatch.status = validWinnerId ? 'finished' : (currentMatch.participant1Id && currentMatch.participant2Id ? 'ready' : 'pending');
+  if (mapPicked !== undefined) currentMatch.mapPicked = mapPicked;
+  if (mvp !== undefined) currentMatch.mvp = mvp;
 
   // Advance winner to next match in winners / bracket flow
   if (currentMatch.nextMatchId) {
     for (const round of newRounds) {
-      const nextMatch = round.matches.find(m => m.id === currentMatch!.nextMatchId);
+      const nextMatch = round.matches.find((m) => m.id === currentMatch!.nextMatchId);
       if (nextMatch) {
         if (currentMatch.nextMatchSlot === 1) {
-          nextMatch.participant1Id = winnerId;
+          nextMatch.participant1Id = validWinnerId;
         } else {
-          nextMatch.participant2Id = winnerId;
+          nextMatch.participant2Id = validWinnerId;
         }
+
         if (nextMatch.participant1Id && nextMatch.participant2Id) {
-          nextMatch.status = 'ready';
+          if (nextMatch.status === 'pending') {
+            nextMatch.status = 'ready';
+          }
+        } else {
+          nextMatch.status = 'pending';
+          if (!validWinnerId) {
+            nextMatch.winnerId = undefined;
+            nextMatch.loserId = undefined;
+          }
         }
         break;
       }
@@ -808,18 +882,30 @@ function advanceMatchSingleInternal(
   }
 
   // Advance loser in Double Elimination if applicable
-  if (tournament.format === 'double_elimination' && currentMatch.bracketSection === 'winners' && loserId) {
-    // Drop to Lower Bracket
-    const targetRoundIdx = Math.max(0, currentRoundIndex * 2);
-    const lbRound = newRounds.find(r => r.bracketSection === 'losers' && r.roundIndex === targetRoundIdx);
+  if (tournament.format === 'double_elimination' && currentMatch.bracketSection === 'winners') {
+    const targetRoundIdx = currentRoundIndex === 0 ? 0 : 2 * currentRoundIndex - 1;
+    const lbRound = newRounds.find((r) => r.bracketSection === 'losers' && r.roundIndex === targetRoundIdx);
     if (lbRound) {
-      const lbMatch = lbRound.matches.find(m => !m.participant1Id || !m.participant2Id);
-      if (lbMatch) {
-        if (!lbMatch.participant1Id) lbMatch.participant1Id = loserId;
-        else if (!lbMatch.participant2Id) lbMatch.participant2Id = loserId;
+      let targetMatch: Match | undefined;
+      if (currentRoundIndex === 0) {
+        targetMatch = lbRound.matches.find((m) => !m.participant1Id || !m.participant2Id || m.participant1Id === loserId || m.participant2Id === loserId);
+        if (targetMatch) {
+          if (!targetMatch.participant1Id || targetMatch.participant1Id === loserId) targetMatch.participant1Id = loserId;
+          else if (!targetMatch.participant2Id || targetMatch.participant2Id === loserId) targetMatch.participant2Id = loserId;
+        }
+      } else {
+        targetMatch = lbRound.matches[currentMatch.matchIndex] || lbRound.matches.find((m) => !m.participant2Id);
+        if (targetMatch) {
+          if (!targetMatch.participant2Id || targetMatch.participant2Id === loserId) targetMatch.participant2Id = loserId;
+          else if (!targetMatch.participant1Id || targetMatch.participant1Id === loserId) targetMatch.participant1Id = loserId;
+        }
+      }
 
-        if (lbMatch.participant1Id && lbMatch.participant2Id) {
-          lbMatch.status = 'ready';
+      if (targetMatch) {
+        if (targetMatch.participant1Id && targetMatch.participant2Id) {
+          if (targetMatch.status === 'pending') targetMatch.status = 'ready';
+        } else {
+          targetMatch.status = 'pending';
         }
       }
     }
@@ -829,8 +915,13 @@ function advanceMatchSingleInternal(
   let championId = tournament.championId;
   let runnerUpId = tournament.runnerUpId;
 
-  if (currentMatch.bracketSection === 'grand_final' || (tournament.format === 'single_elimination' && currentRoundIndex === newRounds.length - (tournament.settings.hasThirdPlaceMatch ? 2 : 1))) {
-    championId = winnerId;
+  const isFinalsRound =
+    currentMatch.bracketSection === 'grand_final' ||
+    (tournament.format === 'single_elimination' &&
+      currentRoundIndex === newRounds.length - (tournament.settings?.hasThirdPlaceMatch ? 2 : 1));
+
+  if (isFinalsRound) {
+    championId = validWinnerId;
     runnerUpId = loserId;
   }
 
