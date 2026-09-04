@@ -855,6 +855,7 @@ function advanceMatchSingleInternal(
   if (mvp !== undefined) currentMatch.mvp = mvp;
 
   // Advance winner to next match in winners / bracket flow
+  let winnerAdvanced = false;
   if (currentMatch.nextMatchId) {
     for (const round of newRounds) {
       const nextMatch = round.matches.find((m) => m.id === currentMatch!.nextMatchId);
@@ -876,7 +877,33 @@ function advanceMatchSingleInternal(
             nextMatch.loserId = undefined;
           }
         }
+        winnerAdvanced = true;
         break;
+      }
+    }
+  }
+
+  // Fallback if nextMatchId was not found or not set
+  if (!winnerAdvanced && currentRoundIndex >= 0 && currentRoundIndex < newRounds.length - 1 && currentMatch.bracketSection === 'winners') {
+    const nextRound = newRounds[currentRoundIndex + 1];
+    if (nextRound && nextRound.matches) {
+      const targetMatchIndex = Math.floor(currentMatch.matchIndex / 2);
+      const nextMatch = nextRound.matches[targetMatchIndex];
+      if (nextMatch) {
+        const slot = currentMatch.matchIndex % 2 === 0 ? 1 : 2;
+        if (slot === 1) {
+          nextMatch.participant1Id = validWinnerId;
+        } else {
+          nextMatch.participant2Id = validWinnerId;
+        }
+
+        if (nextMatch.participant1Id && nextMatch.participant2Id) {
+          if (nextMatch.status === 'pending') {
+            nextMatch.status = 'ready';
+          }
+        } else {
+          nextMatch.status = 'pending';
+        }
       }
     }
   }
