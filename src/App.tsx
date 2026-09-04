@@ -341,7 +341,6 @@ export default function App() {
 
     const validWinnerId = winnerId ? winnerId : undefined;
 
-    // Apply supplementary match metadata and ensure score & winner are explicitly pinned
     const mapMatches = (matches: Match[]) =>
       matches.map((m) => {
         if (m.id === matchId) {
@@ -386,6 +385,60 @@ export default function App() {
         : undefined,
       updatedAt: Date.now(),
     };
+
+    // Placement results are controlled by the Admin's manually saved result.
+    // Do not infer or populate any later-round participant slots here.
+    const getPlacement = (rounds: typeof updated.rounds, format: Tournament['format']) => {
+      const roundIndex = rounds.findIndex((round) => round.matches.some((m) => m.id === matchId));
+      const savedMatch = roundIndex >= 0
+        ? rounds[roundIndex].matches.find((m) => m.id === matchId)
+        : undefined;
+      if (!savedMatch) return { isFinal: false, isThirdPlace: false, winnerId: undefined, loserId: undefined };
+
+      const isThirdPlace = savedMatch.bracketSection === 'third_place';
+      const isFinal = savedMatch.bracketSection === 'grand_final' ||
+        (format === 'single_elimination' &&
+          savedMatch.bracketSection === 'winners' &&
+          roundIndex === rounds.length - (updated.settings.hasThirdPlaceMatch ? 2 : 1));
+      return {
+        isFinal,
+        isThirdPlace,
+        winnerId: savedMatch.winnerId,
+        loserId: savedMatch.loserId,
+      };
+    };
+
+    const topPlacement = getPlacement(updated.rounds, updated.format);
+    if (topPlacement.isFinal || topPlacement.isThirdPlace) {
+      updated = {
+        ...updated,
+        ...(topPlacement.isFinal ? {
+          championId: topPlacement.winnerId,
+          runnerUpId: topPlacement.loserId,
+          status: topPlacement.winnerId ? 'completed' : 'ongoing',
+        } : {}),
+        ...(topPlacement.isThirdPlace ? { thirdPlaceId: topPlacement.winnerId } : {}),
+      };
+    }
+
+    if (updated.divisions) {
+      updated = {
+        ...updated,
+        divisions: updated.divisions.map((division) => {
+          const placement = getPlacement(division.rounds, division.format);
+          if (!placement.isFinal && !placement.isThirdPlace) return division;
+          return {
+            ...division,
+            ...(placement.isFinal ? {
+              championId: placement.winnerId,
+              runnerUpId: placement.loserId,
+              status: placement.winnerId ? 'completed' : 'ongoing',
+            } : {}),
+            ...(placement.isThirdPlace ? { thirdPlaceId: placement.winnerId } : {}),
+          };
+        }),
+      };
+    }
 
     updateTournament(updated);
   };
