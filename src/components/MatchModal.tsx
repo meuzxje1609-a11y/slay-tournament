@@ -617,9 +617,18 @@ export const MatchModal: React.FC<MatchModalProps> = ({
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="VD: Trận đấu kéo dài Overtime 15-13, comeback ngoạn mục"
+                    placeholder="VD: Đặc cách thủ công (BYE) hoặc ghi chú khác"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
+                  <label className="mt-2 flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notes.includes('BYE')}
+                      onChange={(e) => setNotes(e.target.checked ? 'Đặc cách (BYE)' : '')}
+                      className="accent-purple-500"
+                    />
+                    Đánh dấu đặc cách thủ công (BYE)
+                  </label>
                 </div>
               </div>
             </div>

@@ -26,7 +26,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
   const p1 = participants.find((p) => p.id === match.participant1Id);
   const p2 = participants.find((p) => p.id === match.participant2Id);
 
-  const isBye = Boolean(match.notes?.includes('BYE') || (match.status === 'finished' && (!p1 || !p2) && (p1 || p2)));
+  const isBye = Boolean(match.notes?.includes('BYE'));
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
   const isReady = match.status === 'ready';
