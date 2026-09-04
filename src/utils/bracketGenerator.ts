@@ -855,6 +855,7 @@ export function advanceMatchWinner(
         participants: targetDiv.participants,
         championId: targetDiv.championId,
         runnerUpId: targetDiv.runnerUpId,
+        thirdPlaceId: targetDiv.thirdPlaceId,
         status: targetDiv.status || tournament.status,
       };
 
@@ -867,6 +868,7 @@ export function advanceMatchWinner(
             rounds: advancedTemp.rounds,
             championId: advancedTemp.championId,
             runnerUpId: advancedTemp.runnerUpId,
+            thirdPlaceId: advancedTemp.thirdPlaceId,
             status: advancedTemp.status,
           };
         }
@@ -879,6 +881,7 @@ export function advanceMatchWinner(
         rounds: advancedTemp.rounds,
         championId: advancedTemp.championId || tournament.championId,
         runnerUpId: advancedTemp.runnerUpId || tournament.runnerUpId,
+        thirdPlaceId: advancedTemp.thirdPlaceId || tournament.thirdPlaceId,
         updatedAt: Date.now(),
       };
     }
